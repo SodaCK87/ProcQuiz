@@ -9,14 +9,14 @@
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
 測試：`python -m unittest discover -s tests` 28 條全綠（2026-10-02，本機 Python 3.11.9，中位數 37 秒；相依先裝 `pip install -r requirements.txt`）；
-網站邏輯 `npm test`（在 `web/`）17 條全綠（Node 24）。
+網站邏輯 `npm test`（在 `web/`）17 條全綠（Node 24）。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試與網站建置，CI 跑的是同一支。
 
 ## 網站
 
 在 `web/` 底下操作，第一次先 `npm install`：
 
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
-2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 先跑 Python 測試（含「已提交的題庫 JSON 等於重跑轉檔結果」），再跑 `npm test`、建置並發布到 GitHub Pages，任一測試沒過就不發布。
+2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 跑 `python tools/run_gate.py`（Python 測試含「已提交的題庫 JSON 等於重跑轉檔結果」、`npm test`、建置），全部通過才發布到 GitHub Pages。
 3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單、背景星圖的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
