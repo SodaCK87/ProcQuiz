@@ -16,7 +16,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 守題庫正確度：已提交的 data/questions/*.json 必須等於重跑轉檔的結果，手改或忘記重跑就不發布
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests
+
   build:
+    needs: convert
     runs-on: ubuntu-latest
     defaults:
       run:

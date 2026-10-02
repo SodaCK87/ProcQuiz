@@ -8,7 +8,7 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
-測試：`python -m unittest discover -s tests` 24 條全綠（2026-10-02，本機 Python 3.11.9，需 openpyxl、pypdf）；
+測試：`python -m unittest discover -s tests` 24 條全綠（2026-10-02，本機 Python 3.11.9；相依先裝 `pip install -r requirements.txt`）；
 網站邏輯 `npm test`（在 `web/`）17 條全綠（Node 24）。
 
 ## 網站
@@ -16,7 +16,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 在 `web/` 底下操作，第一次先 `npm install`：
 
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
-2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 會跑測試、建置並發布到 GitHub Pages，測試沒過就不發布。
+2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 先跑 Python 測試（含「已提交的題庫 JSON 等於重跑轉檔結果」），再跑 `npm test`、建置並發布到 GitHub Pages，任一測試沒過就不發布。
 3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單、背景星圖的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
@@ -27,6 +27,8 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 讀寫失敗（無痕模式、被封鎖）時網站照常能用，只是不記。外觀定案見路線圖〈視覺風格〉，原型在 `web/prototype/card-style.html`。
 
 ## 更新題庫
+
+第一次先在 repo 根目錄 `pip install -r requirements.txt`（版本釘死，換版先跑測試）。
 
 1. `python tools/fetch_official.py`：從政府電子採購網「採購法規題庫」下載全部題庫的 DOC 與 PDF，兩份都成功才覆蓋 `data/source/official.*`。
 2. `python tools/convert.py`：核對後寫出 `data/questions/*.json`，並列出與上一版相比新增、刪除、改答案的題目。任何一項核對不過就中止且不寫檔。
