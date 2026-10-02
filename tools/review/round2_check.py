@@ -1,11 +1,11 @@
-"""核對第二輪：每項指控都有判定、判定合法、維持者有嚴重度。印出定案統計並寫 tmp/review/final.json。"""
+"""核對第二輪：每項指控都有判定、判定合法、維持者有嚴重度。印出定案統計並寫 data/review/work/final.json。"""
 import json
 import sys
 from collections import Counter
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
-R = Path(__file__).resolve().parents[2] / "tmp" / "review"
+R = Path(__file__).resolve().parents[2] / "data" / "review" / "work"
 
 want = {}
 for p in (R / "round2").glob("V*.json"):
@@ -13,6 +13,8 @@ for p in (R / "round2").glob("V*.json"):
         for item in c["指控"]["項目"]:
             want[(c["id"], item)] = (p.stem, c["指控"]["代碼"][item], c)
 
+if not want:
+    sys.exit(f"✗ 找不到第二輪輸入：{R / 'round2'}")
 got = {}
 problems = []
 for p in (R / "round2-out").glob("V0[1-5].json"):
@@ -47,5 +49,8 @@ for key, v in sorted(got.items()):
                   "第二輪": {k: v.get(k) for k in ("理由", "證據")}})
 (R / "final.json").write_text(json.dumps(final, ensure_ascii=False, indent=1), encoding="utf-8")
 print(f"定案 {len(final)} 項寫入 final.json")
-for p in problems + [f"缺 {m}" for m in missing] + [f"多 {e}" for e in extra]:
+bad = problems + [f"缺 {m}" for m in missing] + [f"多 {e}" for e in extra]
+for p in bad:
     print("✗", p)
+if bad:
+    sys.exit(1)

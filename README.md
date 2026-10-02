@@ -72,7 +72,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 | 3 | 為定案的題目撰寫卡片註記，附原文依據 | 99 則 |
 | 4 | 獨立核對員逐則對原文挑錯 | 96 則通過、3 則依核對意見改寫 |
 
-定案的註記在 `data/review/notes.json`，轉檔時掛上題目，卡片背面依類型呈現：
+定案的註記在 `data/review/notes.json`，轉檔時掛上題目；各輪的輸入、指控與法規原文在 `data/review/work/`，`python tools/review/round1_check.py` 與 `round2_check.py` 核對各輪產出，有缺漏或找不到資料就退出非零。卡片背面依類型呈現：
 
 | 類型 | 題數 | 卡片呈現 |
 | --- | --- | --- |

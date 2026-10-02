@@ -4,10 +4,12 @@ import sys
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
-R = Path(__file__).resolve().parents[2] / "tmp" / "review"
+R = Path(__file__).resolve().parents[2] / "data" / "review" / "work"
 n_groups = int(sys.argv[1]) if len(sys.argv) > 1 else 5
 
 items = {it["id"]: it for p in (R / "batches").glob("*.json") for it in json.loads(p.read_text(encoding="utf-8"))}
+if not items:
+    sys.exit(f"✗ 找不到審查批次：{R / 'batches'}")
 claims = []
 doubts = []
 for f in sorted((R / "findings").glob("*.json")):

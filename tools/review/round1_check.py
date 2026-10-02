@@ -5,11 +5,14 @@ from collections import Counter
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
-R = Path(__file__).resolve().parents[2] / "tmp" / "review"
+R = Path(__file__).resolve().parents[2] / "data" / "review" / "work"
 EXPL = {"ok", "無", "矛盾", "不對題", "錯誤", "過時"}
 LAW = {"ok", "無", "不相關"}
 
 batches = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in (R / "batches").glob("*.json")}
+# 資料目錄不在時 glob 回空，會印「0 之 0 全涵蓋」而看似通過
+if not batches:
+    sys.exit(f"✗ 找不到審查批次：{R / 'batches'}")
 covered: dict[str, str] = {}
 stats = Counter()
 problems = []
@@ -45,3 +48,5 @@ for k, n in sorted(stats.items()):
     print(f"  {k[0]} {k[1]}：{n}")
 for p in problems:
     print("✗", p)
+if problems or all_ids - set(covered):
+    sys.exit(1)
