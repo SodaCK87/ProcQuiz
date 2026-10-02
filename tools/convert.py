@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import difflib
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -29,7 +30,41 @@ COURSES = [
 ]
 
 
-def build(source: Path = SOURCE) -> tuple[dict[str, dict], list[str]]:
+REVIEW = ROOT / "data" / "review" / "notes.json"
+NOTE_TYPES = {"取代解析": "replace", "更正出處": "correct", "法條更正": "law", "答案註記": "answer"}
+
+
+def fingerprint(text: str | None) -> str | None:
+    return hashlib.sha1(norm(text).encode("utf-8")).hexdigest()[:12] if text else None
+
+
+def apply_review(questions: list[dict], review: Path) -> set[str]:
+    """把人工審查定案的註記掛上題目。題文或解析與審查當時不同就中止：編號可能被官方重排，
+    註記若照編號掛上去會對到別題。"""
+    applied: set[str] = set()
+    if not review.exists():
+        return applied
+    by_id = {q["id"]: q for q in questions}
+    for n in json.loads(review.read_text(encoding="utf-8")):
+        q = by_id.get(n["id"])
+        if q is None:
+            continue  # 另一個題型的註記
+        if n["類型"] not in NOTE_TYPES:
+            raise BankError(f"審查註記 {n['id']}：類型不合法 {n['類型']}")
+        if fingerprint(question_key(q)) != n["題目指紋"]:
+            raise BankError(f"審查註記 {n['id']}：題目與審查當時不同（可能是官方改題或重排編號），請重審這則註記")
+        if n["類型"] in ("取代解析", "更正出處") and fingerprint(q["explanation"]) != n["解析指紋"]:
+            raise BankError(f"審查註記 {n['id']}：解析與審查當時不同，請重審這則註記")
+        if any(x["type"] == NOTE_TYPES[n["類型"]] for x in q["notes"]):
+            raise BankError(f"審查註記 {n['id']}：同一題有兩則「{n['類型']}」")
+        if n["類型"] == "取代解析":
+            q["explanation"] = None
+        q["notes"].append({"type": NOTE_TYPES[n["類型"]], "text": n["內容"]})
+        applied.add(n["id"])
+    return applied
+
+
+def build(source: Path = SOURCE, review: Path = REVIEW) -> tuple[dict[str, dict], list[str]]:
     """回傳（{kind: 題庫資料}, 提醒清單）。任何核對失敗擲 BankError。"""
     date, sections = read_rtf(source / "official.rtf")
     names = {course for _, course in sections}
@@ -40,6 +75,7 @@ def build(source: Path = SOURCE) -> tuple[dict[str, dict], list[str]]:
     cross_check(sections, read_pdf_answers(source / "official.pdf", names))
 
     notes: list[str] = []
+    applied: set[str] = set()
     result = {}
     for kind, meta in KINDS.items():
         xdata, xnotes = read_xlsx(kind, source / f"{kind}.xlsx")
@@ -89,6 +125,9 @@ def build(source: Path = SOURCE) -> tuple[dict[str, dict], list[str]]:
                     notes.append(f"官方有、xlsx 找不到相近題目：{q['id']}")
 
         check_duplicates(questions, meta["label"])
+        for q in questions:
+            q["notes"] = []
+        applied |= apply_review(questions, review)
         result[kind] = {
             "kind": kind,
             "label": meta["label"],
@@ -98,6 +137,10 @@ def build(source: Path = SOURCE) -> tuple[dict[str, dict], list[str]]:
             "courses": [{"id": i, "name": c, "count": len(sections[(kind, c)])} for i, c in enumerate(COURSES, 1)],
             "questions": questions,
         }
+    if review.exists():
+        unknown = {n["id"] for n in json.loads(review.read_text(encoding="utf-8"))} - applied
+        if unknown:
+            raise BankError(f"審查註記指向不存在的題目：{sorted(unknown)}")
     return result, notes
 
 

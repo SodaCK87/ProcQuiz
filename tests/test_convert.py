@@ -65,6 +65,54 @@ class PureFunctions(unittest.TestCase):
         convert.check_duplicates(qs, "是非題")
 
 
+class ReviewNotes(unittest.TestCase):
+    """審查註記照題目與解析的指紋掛上去；指紋對不上就中止，免得官方重排編號後註記掛到別題。"""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.q = {"id": "tf-01-0001", "stem": "某題", "explanation": "舊解析", "notes": []}
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _apply(self, *notes):
+        p = self.tmp / "notes.json"
+        p.write_text(__import__("json").dumps(list(notes), ensure_ascii=False), encoding="utf-8")
+        return convert.apply_review([self.q], p)
+
+    def _note(self, kind, **kw):
+        n = {"id": "tf-01-0001", "類型": kind, "內容": "註記",
+             "題目指紋": convert.fingerprint(convert.question_key(self.q)),
+             "解析指紋": convert.fingerprint(self.q["explanation"])}
+        n.update(kw)
+        return n
+
+    def test_replace_hides_explanation(self):
+        self.assertEqual(self._apply(self._note("取代解析")), {"tf-01-0001"})
+        self.assertIsNone(self.q["explanation"])
+        self.assertEqual(self.q["notes"], [{"type": "replace", "text": "註記"}])
+
+    def test_correct_and_law_notes_coexist(self):
+        self._apply(self._note("更正出處"), self._note("法條更正"))
+        self.assertEqual([n["type"] for n in self.q["notes"]], ["correct", "law"])
+        self.assertEqual(self.q["explanation"], "舊解析")
+
+    def test_changed_question_is_rejected(self):
+        with self.assertRaisesRegex(BankError, "題目與審查當時不同"):
+            self._apply(self._note("答案註記", 題目指紋="000000000000"))
+
+    def test_changed_explanation_is_rejected(self):
+        with self.assertRaisesRegex(BankError, "解析與審查當時不同"):
+            self._apply(self._note("更正出處", 解析指紋="000000000000"))
+
+    def test_duplicate_type_and_bad_type_are_rejected(self):
+        with self.assertRaisesRegex(BankError, "兩則"):
+            self._apply(self._note("更正出處"), self._note("更正出處"))
+        self.q["notes"] = []
+        with self.assertRaisesRegex(BankError, "類型不合法"):
+            self._apply(self._note("隨便寫"))
+
+
 class Output(unittest.TestCase):
     def test_committed_json_matches_regeneration(self):
         # 產出物進版控，這條守「換了來源檔或改了腳本卻忘了重跑」
@@ -72,6 +120,17 @@ class Output(unittest.TestCase):
         for kind, data in result.items():
             committed = (convert.OUT / f"{kind}.json").read_text(encoding="utf-8")
             self.assertTrue(committed == convert.render(data), f"{kind}.json 與重跑結果不同")
+
+    def test_every_review_note_is_on_its_question(self):
+        result, _ = built()
+        notes = __import__("json").loads(convert.REVIEW.read_text(encoding="utf-8"))
+        shown = {(q["id"], n["text"]) for d in result.values() for q in d["questions"] for n in q["notes"]}
+        self.assertEqual(shown, {(n["id"], n["內容"]) for n in notes})
+        replaced = {n["id"] for n in notes if n["類型"] == "取代解析"}
+        for d in result.values():
+            for q in d["questions"]:
+                if q["id"] in replaced:
+                    self.assertIsNone(q["explanation"], q["id"])
 
     def test_explanation_only_on_same_text_and_same_answer(self):
         # 解析是第三方的；只要掛上去，那題在 xlsx 的題文與答案就必須與官方相同
