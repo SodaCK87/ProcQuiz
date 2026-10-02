@@ -10,7 +10,7 @@
   --sheen:255,226,150;
   /* 定案強度：金墨 20%、符文 150%；卡面再暗 30%（×.75）、背景再暗 40%（×.85） */
   --ink-a1:.032; --ink-a2:.056; --ink-a3:.11;
-  --rune-lo:.42; --rune-hi:1; --rune-glow:4.5px;
+  --rune-lo:.42; --rune-hi:1; --rune-glow-w:.85;
   --card-dim:.225; --page-dim:.34;
   color-scheme:dark;
 }
@@ -21,12 +21,16 @@ body{
   font:16px/1.7 "Noto Serif TC","Songti TC","PMingLiU",serif;
   padding:18px 16px 32px;
   background-color:var(--night);
+}
+/* 頁面古紙放在固定的獨立圖層，捲動時不必重畫（取代 background-attachment:fixed） */
+.page-bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
   background-image:
     radial-gradient(ellipse 120% 90% at 50% 35%, transparent 35%, rgba(0,0,0,.75) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .5' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .42 0 0 0 0 .25 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .37 0 0 0 0 .2 0 0 0 .5 -.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E"),
+    var(--tex-page-fiber,none),
+    var(--tex-page-stain,none),
     linear-gradient(var(--night-2),var(--night-3) 60%,var(--night-2));
-  background-attachment:fixed;
+  background-size:auto,400px 400px,600px 600px,auto;
 }
 button{font:inherit}
 

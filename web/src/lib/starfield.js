@@ -7,10 +7,18 @@ let cv, cx, W = 0, H = 0, DPR = 1, reduced = false, avoid = null;
 let stars = [], groups = [], shoot = null, nextShoot = 4, last = 0;
 const sparks = [];
 
+/* 光點先畫成一張小圖，之後每格只貼圖；原本每顆星每格都建一次放射漸層，手機上整張畫布很吃力 */
+let sprite = null;
+function makeSprite(){
+  const s = 64, c = document.createElement('canvas'); c.width = c.height = s;
+  const g2 = c.getContext('2d'), g = g2.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, `rgba(${GOLD_HI},1)`); g.addColorStop(.35, `rgba(${GOLD},.5)`); g.addColorStop(1, `rgba(${GOLD},0)`);
+  g2.fillStyle = g; g2.fillRect(0, 0, s, s);
+  return c;
+}
 function glowDot(x, y, r, a){
-  const g = cx.createRadialGradient(x, y, 0, x, y, r * 4);
-  g.addColorStop(0, `rgba(${GOLD_HI},${a})`); g.addColorStop(.35, `rgba(${GOLD},${a * .5})`); g.addColorStop(1, `rgba(${GOLD},0)`);
-  cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r * 4, 0, Math.PI * 2); cx.fill();
+  if (a <= 0) return;
+  cx.globalAlpha = Math.min(1, a); cx.drawImage(sprite, x - r * 4, y - r * 4, r * 8, r * 8); cx.globalAlpha = 1;
 }
 
 /* 手機上卡片幾乎佔滿畫面，星星生在卡片後面等於看不到 */
@@ -44,7 +52,7 @@ function init(){
 }
 
 function size(){
-  DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  DPR = Math.min(1.5, devicePixelRatio || 1);  // 光點本來就是柔邊，畫布解析度不必跟到 3 倍 W = innerWidth; H = innerHeight;
   cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (W && H) init();
 }
@@ -88,12 +96,13 @@ function frame(dt, t){
 
 function loop(now){
   const dt = Math.min((now - last) / 1000, .05); last = now;
+  if (W !== innerWidth || H !== innerHeight) size();  // 開頁當下視窗尺寸可能還是 0，resize 事件不一定會補發
   frame(dt, now / 1000);
   requestAnimationFrame(loop);
 }
 
 export function start(canvas){
-  cv = canvas; cx = cv.getContext('2d');
+  cv = canvas; cx = cv.getContext('2d'); sprite = makeSprite();
   reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   size(); addEventListener('resize', size);
   if (reduced){ frame(0, 0); return; }

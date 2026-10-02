@@ -3,6 +3,7 @@
   import QuizCard from './components/QuizCard.svelte';
   import StartScreen from './components/StartScreen.svelte';
   import { start as startStars } from './lib/starfield.js';
+  import { bakeTextures } from './lib/textures.js';
   import { load, save, record, stats } from './lib/progress.js';
   import { buildDeck, deckKey, newSeed } from './lib/deck.js';
 
@@ -61,9 +62,10 @@
 
   let roundStats = $derived.by(() => { rev; return view === 'done' && bank ? stats(progress, bank.questions, course) : null; });
 
-  onMount(() => startStars(canvas));
+  onMount(() => { bakeTextures(); startStars(canvas); });
 </script>
 
+<div class="page-bg" aria-hidden="true"></div>
 <div class="page-dim" aria-hidden="true"></div>
 <canvas class="stars" bind:this={canvas} aria-hidden="true"></canvas>
 

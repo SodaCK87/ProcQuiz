@@ -19,7 +19,7 @@
       <div class="fx-runes">
         {#each runes as r}
           <i style="left:{r.x}%;top:{r.y}%;animation-delay:{r.delay}s">
-            <svg viewBox="-1.3 -1.3 2.6 2.6"><path d={r.d} fill="none" stroke="currentColor" stroke-width=".24" stroke-linecap="round"/></svg>
+            <svg viewBox="-1.3 -1.3 2.6 2.6"><path class="glow" d={r.d}/><path d={r.d} fill="none" stroke="currentColor" stroke-width=".24" stroke-linecap="round"/></svg>
           </i>
         {/each}
       </div>
@@ -67,10 +67,11 @@
     background-color:var(--paper);
     background-image:
       radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(var(--paper-burn),.55) 100%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .08 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.008 .35' numOctaves='2' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .24 0 0 0 0 .1 0 0 0 .3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.01' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .26 0 0 0 0 .1 0 0 0 .7 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E"),
+      var(--tex-paper-noise,none),
+      var(--tex-paper-fiber,none),
+      var(--tex-paper-stain,none),
       linear-gradient(160deg,var(--paper),var(--paper-2));
+    background-size:auto,300px 300px,300px 300px,500px 500px,auto;
     box-shadow:inset 0 0 0 1px rgba(240,212,138,.35),inset 0 0 26px rgba(var(--paper-burn),.55);
   }
   .paper::after{
@@ -87,10 +88,11 @@
   @keyframes ink{0%{transform:scale(.15) rotate(0);opacity:0}12%{opacity:1}100%{transform:scale(1.6) rotate(50deg);opacity:0}}
   .fx-runes i{
     position:absolute;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;color:#F0D48A;opacity:var(--rune-lo);
-    filter:drop-shadow(0 0 var(--rune-glow) rgba(240,212,138,.85));
     animation:runeOn 5.6s ease-in-out infinite;
   }
   .fx-runes svg{display:block;width:100%;height:100%;overflow:visible}
+  /* 光暈：寬而淡的同形線條，取代 drop-shadow 濾鏡（56 個符文各帶濾鏡在手機上重） */
+  .fx-runes .glow{fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:var(--rune-glow-w);stroke-opacity:.28}
   @keyframes runeOn{0%,100%{opacity:var(--rune-lo)}7%{opacity:var(--rune-hi)}24%{opacity:var(--rune-lo)}}
   /* 暗度：壓在紋理與動畫上、文字下 */
   .dim{position:absolute;inset:0;background:#0b0704;opacity:var(--card-dim);pointer-events:none}

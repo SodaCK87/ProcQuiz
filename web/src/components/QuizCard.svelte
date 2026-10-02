@@ -23,10 +23,10 @@
     const rad = S.theta * Math.PI / 180, side = Math.abs(Math.sin(rad)), cos = Math.cos(rad);
     const lift = 56 * side;
     card.style.transform = `translateZ(${lift}px) rotateY(${S.theta}deg)`;
-    // 不單靠 backface-visibility：背對的那面直接隱藏，也順便讓它點不到
+    // 背面靠 backface-visibility 藏起來，但保持可見好讓它事先畫好；翻到中途才第一次畫背面，手機上會卡一下
     const frontOn = cos > 0;
-    front.style.visibility = frontOn ? 'visible' : 'hidden';
-    back.style.visibility = frontOn ? 'hidden' : 'visible';
+    front.style.pointerEvents = frontOn ? '' : 'none';
+    back.style.pointerEvents = frontOn ? 'none' : '';
     front.setAttribute('aria-hidden', String(!frontOn));
     back.setAttribute('aria-hidden', String(frontOn));
     const narrow = .3 + .7 * Math.abs(cos);
@@ -137,17 +137,16 @@
       {#snippet foot()}<button class="btn primary" onclick={show}>看答案</button>{/snippet}
     </CardFace>
     <CardFace side="back">
-      {#if answered}
-        <div class="verdict" class:ok={isOk} class:bad={!isOk}>
-          <div class="seal">{isOk ? '正' : '誤'}</div>
-          <div><strong>{isOk ? '答對了' : '答錯了'}</strong><span>正解 {question.answer}｜你選 {chosen}</span></div>
-        </div>
-        {#if question.options}<p>正解：({question.answer}) {question.options[question.answer - 1]}</p>{/if}
-        {#if question.law}<h3>法條</h3><p>政府採購法{question.law}</p>{/if}
-        {#if question.explanation}<h3>解析</h3><p>{question.explanation}</p>{/if}
-        {#each question.notes as n}<h3>{NOTE_TITLE[n.type] ?? '註記'}</h3><p>{n.text}</p>{/each}
-        {#if !question.explanation && !question.notes.length}<p class="none">這題目前沒有解析。</p>{/if}
-      {/if}
+      <!-- 解析在出題時就排好，字型也趁讀題時載入；按下答案只換上面的判定 -->
+      <div class="verdict" class:ok={isOk} class:bad={!isOk}>
+        <div class="seal">{isOk ? '正' : '誤'}</div>
+        <div><strong>{isOk ? '答對了' : '答錯了'}</strong><span>正解 {question.answer}｜你選 {chosen ?? ''}</span></div>
+      </div>
+      {#if question.options}<p>正解：({question.answer}) {question.options[question.answer - 1]}</p>{/if}
+      {#if question.law}<h3>法條</h3><p>政府採購法{question.law}</p>{/if}
+      {#if question.explanation}<h3>解析</h3><p>{question.explanation}</p>{/if}
+      {#each question.notes as n}<h3>{NOTE_TITLE[n.type] ?? '註記'}</h3><p>{n.text}</p>{/each}
+      {#if !question.explanation && !question.notes.length}<p class="none">這題目前沒有解析。</p>{/if}
       {#snippet foot()}
         <button class="btn" onclick={peek}>看題目</button>
         <button class="btn primary" onclick={next}>下一題</button>
