@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="zh-Hant-TW" data-paper="dark" data-cardfx="ink runes" style="--ink-a1:.032;--ink-a2:.056;--ink-a3:.11;--rune-lo:.42;--rune-hi:1;--rune-glow:4.5px">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>草紙卡片試作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 頁面：暗色古紙 */
+  --night:#0d0a07; --night-2:#1f170f; --night-3:#33261a;
+  --page-ink:#E6D3A8; --page-ink-2:#B79E72;
+  /* 暗金 */
+  --gold-deep:#4f3a14; --gold:#8f6c2a; --gold-mid:#b8913f; --gold-hi:#f0d48a;
+  /* 卡面：淺草紙（預設） */
+  --paper:#D3BC8C; --paper-2:#C2A673; --paper-burn:62,38,14;
+  --ink:#2A1A0B; --ink-2:#4E3719; --ink-line:rgba(42,26,11,.22); --gold-text:#5E4210;
+  --ok:#1D4A31; --ok-bg:rgba(36,86,58,.12); --bad:#852514; --bad-bg:rgba(154,46,29,.12);
+  --sheen:255,226,150;
+  color-scheme:dark;
+}
+:root[data-paper="dark"]{
+  --paper:#3A2B1B; --paper-2:#2C2014; --paper-burn:8,5,2;
+  --ink:#EEDDB5; --ink-2:#C2AA7C; --ink-line:rgba(238,221,181,.2); --gold-text:#D9B763;
+  --ok:#8FCB9F; --ok-bg:rgba(143,203,159,.12); --bad:#F0907A; --bad-bg:rgba(240,144,122,.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  min-height:100vh; color:var(--page-ink); overflow-x:hidden;
+  font:16px/1.7 "Noto Serif TC","Songti TC","PMingLiU",serif;
+  padding:18px 16px 40px;
+  background-color:var(--night);
+  /* 暗色古紙：纖維＋污漬＋四周燒暗 */
+  background-image:
+    radial-gradient(ellipse 120% 90% at 50% 35%, transparent 35%, rgba(0,0,0,.75) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .5' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .42 0 0 0 0 .25 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .37 0 0 0 0 .2 0 0 0 .5 -.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E"),
+    linear-gradient(var(--night-2),var(--night-3) 60%,var(--night-2));
+  background-attachment:fixed;
+}
+#motes{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:460px;margin:0 auto}
+header{text-align:center;margin-bottom:18px}
+header h1{
+  margin:0;font-size:22px;letter-spacing:.18em;font-weight:700;
+  background:linear-gradient(90deg,var(--gold),var(--gold-hi),var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+header p{margin:2px 0 0;font-size:13px;color:var(--page-ink-2);letter-spacing:.08em}
+
+/* ---------- 舞台 ---------- */
+.slot{position:relative;height:min(64vh,560px);perspective:1100px;margin:0 6px 30px}
+.aura{
+  position:absolute;inset:0;border-radius:18px;pointer-events:none;
+  box-shadow:0 0 40px 6px rgba(240,212,138,.24);
+  animation:aura 4.5s ease-in-out infinite;
+}
+@keyframes aura{0%,100%{opacity:.45}50%{opacity:1}}
+.floor{
+  position:absolute;left:8%;right:8%;bottom:-20px;height:32px;pointer-events:none;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.7),transparent 70%);
+}
+.card{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+
+/* 面＝暗金框；旋轉的錐形漸層當流光，紙張壓在上面只露出 4px 邊 */
+.face{
+  position:absolute;inset:0;border-radius:18px;overflow:hidden;
+  background:var(--gold-deep);
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6);
+}
+.back{transform:rotateY(180deg)}
+.face::before{
+  content:"";position:absolute;inset:-50%;
+  background:conic-gradient(from 0deg,
+    var(--gold-deep) 0deg,var(--gold) 50deg,var(--gold-hi) 78deg,var(--gold) 100deg,var(--gold-deep) 150deg,
+    var(--gold-deep) 180deg,var(--gold) 230deg,#d9b763 258deg,var(--gold) 280deg,var(--gold-deep) 330deg);
+  animation:sweep 7s linear infinite;
+}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.paper{
+  position:absolute;inset:4px;border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;color:var(--ink);
+  background-color:var(--paper);
+  background-image:
+    radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(var(--paper-burn),.55) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .08 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.008 .35' numOctaves='2' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .24 0 0 0 0 .1 0 0 0 .3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.01' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .26 0 0 0 0 .1 0 0 0 .7 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E"),
+    linear-gradient(160deg,var(--paper),var(--paper-2));
+  box-shadow:inset 0 0 0 1px rgba(240,212,138,.35),inset 0 0 26px rgba(var(--paper-burn),.55);
+}
+/* 內框細金線 */
+.paper::after{
+  content:"";position:absolute;inset:7px;border-radius:9px;pointer-events:none;
+  border:1px solid rgba(143,108,42,.55);
+}
+.corner{position:absolute;width:34px;height:34px;color:var(--gold);pointer-events:none;z-index:2}
+.corner.tl{top:3px;left:3px}
+.corner.tr{top:3px;right:3px;transform:scaleX(-1)}
+.corner.bl{bottom:3px;left:3px;transform:scaleY(-1)}
+.corner.br{bottom:3px;right:3px;transform:scale(-1)}
+/* 框上的星芒，錯開時間閃 */
+.spark{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;z-index:3;
+  color:#fff3c8;opacity:0;animation:twinkle 5.2s ease-in-out infinite}
+.spark svg{display:block;width:100%;height:100%;filter:drop-shadow(0 0 3px rgba(240,212,138,.9))}
+@keyframes twinkle{0%,70%,100%{opacity:0;transform:scale(.3) rotate(0)}80%{opacity:1;transform:scale(1) rotate(45deg)}90%{opacity:0;transform:scale(.4) rotate(90deg)}}
+/* 法陣浮水印 */
+.sigil{position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;margin:-75% 0 0 -75%;
+  color:var(--ink);opacity:.07;pointer-events:none;animation:sweep 140s linear infinite}
+
+.body{position:relative;z-index:1;flex:1;overflow-y:auto;padding:24px 22px 8px;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+/* 題目短時置中；內容超出時 auto 邊距歸零，不會被裁掉頂端 */
+#frontBody > .inner{margin:auto 0}
+.foot{position:relative;z-index:1;display:flex;gap:10px;padding:10px 18px 18px}
+.foot[hidden]{display:none}
+.foot button{flex:1}
+.meta{font-size:12px;color:var(--ink-2);letter-spacing:.06em;margin-bottom:10px;text-align:center}
+.meta::after{content:"";display:block;height:1px;margin:8px auto 0;width:60%;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.stem{font-size:18px;margin:0 0 18px;line-height:1.75}
+
+.btn{
+  font:inherit;cursor:pointer;border-radius:10px;padding:10px 12px;color:var(--ink);
+  background:rgba(var(--paper-burn),.08);border:1px solid rgba(143,108,42,.7);
+  box-shadow:inset 0 1px 0 rgba(255,240,200,.25);
+}
+.btn.primary{
+  color:#F3E2B5;border-color:var(--gold-hi);
+  background:linear-gradient(180deg,#5a4318,#3a2a0e);
+  box-shadow:inset 0 1px 0 rgba(240,212,138,.35),0 1px 3px rgba(0,0,0,.4);
+}
+.tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tf .btn{font-size:30px;font-weight:700;padding:14px 0;line-height:1.2}
+.mc{display:grid;gap:9px}
+.mc .btn{text-align:left;display:flex;gap:10px;align-items:flex-start;line-height:1.6}
+.mc .btn .no{font-weight:700;color:var(--gold-text);min-width:1.1em}
+.btn.chosen{outline:2px solid var(--gold-hi);outline-offset:2px}
+.btn.is-ans{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.btn.is-wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.btn:disabled{cursor:default}
+
+.verdict{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.seal{
+  flex:none;width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
+  font-size:30px;font-weight:700;transform:rotate(-8deg);
+  border:3px double currentColor;box-shadow:inset 0 0 0 3px transparent;
+}
+.verdict.ok .seal{color:var(--ok);background:var(--ok-bg)}
+.verdict.bad .seal{color:var(--bad);background:var(--bad-bg)}
+.verdict strong{display:block;font-size:20px}
+.verdict.ok strong{color:var(--ok)} .verdict.bad strong{color:var(--bad)}
+.verdict span{font-size:14px;color:var(--ink-2)}
+.back h3{
+  display:flex;align-items:center;gap:8px;font-size:14px;letter-spacing:.2em;
+  margin:16px 0 4px;color:var(--gold-text)}
+.back h3::before,.back h3::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.back h3::after{background:linear-gradient(90deg,var(--gold),transparent)}
+.back p{margin:0;white-space:pre-line}
+
+.shade{position:absolute;inset:0;z-index:4;background:#140a00;opacity:0;pointer-events:none}
+.sheen{position:absolute;inset:0;z-index:4;overflow:hidden;opacity:0;pointer-events:none}
+.sheen b{position:absolute;top:-30%;bottom:-30%;left:-60%;width:60%;
+  background:linear-gradient(100deg,transparent 20%,rgba(var(--sheen),.55) 50%,transparent 80%)}
+
+.panel{display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--page-ink-2)}
+.panel .lbl{width:100%;text-align:center;letter-spacing:.2em;color:var(--gold-mid)}
+.fxgrid{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fxgrid button{font:inherit;font-size:14px;padding:7px 4px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--gold);background:rgba(20,14,8,.6);color:var(--page-ink)}
+.fxgrid button[aria-pressed="true"]{background:linear-gradient(180deg,#b8913f,#8f6c2a);color:#1a1208;border-color:var(--gold-hi)}
+.fxdesc{width:100%;margin:0;text-align:center;min-height:3.4em;color:var(--page-ink-2)}
+#cardFxDesc{min-height:0}
+.slider{width:100%;display:grid;grid-template-columns:5em 1fr 3.2em;align-items:center;gap:10px;color:var(--page-ink)}
+.slider[hidden]{display:none}
+.slider input{width:100%}
+.slider output{text-align:right;color:var(--gold-mid)}
+.seg{display:flex;border:1px solid var(--gold);border-radius:999px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;padding:4px 14px;border:0;cursor:pointer;background:transparent;color:var(--page-ink-2)}
+.seg button[aria-pressed="true"]{background:var(--gold);color:#1a1208}
+.panel input{accent-color:var(--gold-mid)}
+footer{margin-top:22px;text-align:center;font-size:12px;color:var(--page-ink-2);opacity:.8}
+
+
+/* ---------- 卡面動畫：紙張與文字之間的一層，<html data-cardfx> 列出開啟的幾種（可複選） ---------- */
+.cardfx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.cardfx > *{display:none}
+:root[data-cardfx~="ink"] .fx-ink,:root[data-cardfx~="candle"] .fx-candle,:root[data-cardfx~="filigree"] .fx-filigree,
+:root[data-cardfx~="runes"] .fx-runes,:root[data-cardfx~="sweep"] .fx-sweep{display:block}
+:root:not([data-cardfx~="sigil"]) .sigil{display:none}
+.fx-ink b{position:absolute;width:75%;aspect-ratio:1;margin:-37.5% 0 0 -37.5%;opacity:0;
+  border-radius:47% 53% 42% 58%/55% 45% 55% 45%;
+  background:radial-gradient(closest-side,rgba(232,196,110,var(--ink-a1)),rgba(232,196,110,var(--ink-a2)) 68%,rgba(240,212,138,var(--ink-a3)) 88%,transparent);
+  animation:ink 11s ease-out infinite}
+@keyframes ink{0%{transform:scale(.15) rotate(0);opacity:0}12%{opacity:1}100%{transform:scale(1.6) rotate(50deg);opacity:0}}
+.fx-candle i{position:absolute;left:-35%;top:-30%;width:130%;height:95%;
+  background:radial-gradient(closest-side,rgba(255,190,110,.36),rgba(255,170,80,.12) 55%,transparent);
+  animation:candleMove 9s ease-in-out infinite alternate,candleFlick 2.6s linear infinite}
+@keyframes candleMove{from{transform:translate(0,0) scale(1)}to{transform:translate(22%,18%) scale(1.12)}}
+@keyframes candleFlick{0%{opacity:.8}11%{opacity:1}19%{opacity:.7}33%{opacity:.95}47%{opacity:.78}58%{opacity:1}74%{opacity:.68}88%{opacity:.92}100%{opacity:.8}}
+.fx-filigree{position:absolute;inset:0;width:100%;height:100%}
+.fx-filigree path{fill:none;stroke-linecap:round}
+.fx-filigree .base{stroke:rgba(217,183,99,.2);stroke-width:.45}
+.fx-filigree .flow{stroke:rgba(255,230,160,.85);stroke-width:.8;stroke-dasharray:7 93;animation:flowdash 7s linear infinite}
+@keyframes flowdash{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.fx-runes i{position:absolute;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;color:#F0D48A;opacity:var(--rune-lo);
+  filter:drop-shadow(0 0 var(--rune-glow) rgba(240,212,138,.85));
+  animation:runeOn 5.6s ease-in-out infinite}
+.fx-runes svg{display:block;width:100%;height:100%;overflow:visible}
+@keyframes runeOn{0%,100%{opacity:var(--rune-lo)}7%{opacity:var(--rune-hi)}24%{opacity:var(--rune-lo)}}
+.fx-sweep{position:absolute;top:-20%;bottom:-20%;left:-60%;width:45%;
+  background:linear-gradient(100deg,transparent,rgba(255,226,150,.2) 40%,rgba(255,240,200,.45) 50%,rgba(255,226,150,.2) 60%,transparent);
+  animation:sweepPaper 6.5s ease-in-out infinite}
+@keyframes sweepPaper{0%,55%{transform:translateX(0) skewX(-12deg)}85%,100%{transform:translateX(420%) skewX(-12deg)}}
+@media (prefers-reduced-motion: reduce){
+  .face::before,.aura,.spark,.sigil,.cardfx *{animation:none}
+}
+</style>
+</head>
+<body>
+<canvas id="motes" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header>
+    <h1>採購題庫</h1>
+    <p>卡片風格試作・非官方</p>
+  </header>
+
+  <div class="slot" id="slot">
+    <div class="aura" id="aura"></div>
+    <div class="floor" id="floor"></div>
+    <div class="card" id="card">
+      <section class="face front" id="front"><div class="paper">
+        <svg class="sigil" viewBox="-100 -100 200 200" aria-hidden="true"><use href="#g-sigil"/></svg>
+        <div class="body" id="frontBody"></div>
+        <div class="foot" id="frontFoot" hidden><button class="btn primary" data-act="show">看答案</button></div>
+      </div></section>
+      <section class="face back" id="back" aria-hidden="true"><div class="paper">
+        <svg class="sigil" viewBox="-100 -100 200 200" aria-hidden="true"><use href="#g-sigil"/></svg>
+        <div class="body" id="backBody"></div>
+        <div class="foot">
+          <button class="btn" data-act="peek">看題目</button>
+          <button class="btn primary" data-act="next">下一題</button>
+        </div>
+      </div></section>
+    </div>
+  </div>
+
+  <div class="panel">
+    <span class="lbl">卡面動畫</span>
+    <div class="fxgrid" id="cardFxSeg" role="group" aria-label="卡面動畫"></div>
+    <p class="fxdesc" id="cardFxDesc">可以複選，疊在一起播。</p>
+    <label class="slider"><span>金墨強度</span><input type="range" id="inkK" min="0" max="200" step="5" value="20"><output id="inkOut">20%</output></label>
+    <label class="slider"><span>符文強度</span><input type="range" id="runeK" min="0" max="200" step="5" value="150"><output id="runeOut">150%</output></label>
+    <span class="lbl">頁面背景</span>
+    <div class="fxgrid" id="fxSeg" role="group" aria-label="頁面背景動畫"></div>
+    <p class="fxdesc" id="fxDesc"></p>
+    <label><input type="checkbox" id="slow"> 慢動作</label>
+  </div>
+  <footer>非官方練習站・題目取自公開題庫 115/10/02 版</footer>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="g-corner" fill="none" stroke="currentColor" stroke-linecap="round">
+      <path d="M3 33V15C3 8 8 3 15 3h18" stroke-width="1.4"/>
+      <path d="M7 33V18c0-6 5-11 11-11h15" stroke-width=".7"/>
+      <circle cx="11" cy="11" r="2.4" fill="currentColor" stroke="none"/>
+      <path d="M14 14c5 0 8-3 9-8M14 14c0 5-3 8-8 9" stroke-width=".9"/>
+      <path d="M22 3.5l2 2-2 2-2-2z M3.5 22l2 2-2 2-2-2z" fill="currentColor" stroke="none"/>
+    </g>
+    <g id="g-star"><path d="M12 0C13 9 15 11 24 12 15 13 13 15 12 24 11 15 9 13 0 12 9 11 11 9 12 0Z" fill="currentColor"/></g>
+    <g id="g-sigil" fill="none" stroke="currentColor">
+      <circle r="96" stroke-width="1"/>
+      <circle r="91" stroke-width="7" stroke-dasharray="1 9.5"/>
+      <circle r="86" stroke-width=".8"/>
+      <circle r="62" stroke-width="1.2"/>
+      <circle r="56" stroke-width=".6" stroke-dasharray="3 3"/>
+      <path d="M0-62 53.7 31-53.7 31Z M0 62-53.7-31 53.7-31Z" stroke-width="1.2"/>
+      <circle r="24" stroke-width="1"/>
+      <path d="M0-86V-62 M0 62V86 M-86 0H-62 M62 0H86 M-60.8-60.8-43.8-43.8 M60.8 60.8 43.8 43.8 M60.8-60.8 43.8-43.8 M-60.8 60.8-43.8 43.8" stroke-width=".8"/>
+      <circle r="4" fill="currentColor"/>
+    </g>
+  </defs>
+</svg>
+
+<script>
+'use strict';
+const COURSES = {1:'政府採購全生命週期概論', 2:'政府採購法之總則、招標及決標'};
+const QUESTIONS = [
+  {kind:'是非題', course:1, no:5, answer:'X', law:null, notes:[],
+   stem:'政府採購全生命週期概念僅適用於技術服務及工程採購。',
+   explanation:'政府採購全生命週期概念均可適用於工程、財物及勞務採購。'},
+  {kind:'選擇題', course:1, no:2, answer:4, law:null, notes:[],
+   stem:'下列何者非政府協調改善我國營造工缺工之措施？',
+   options:['合理檢討移工規定。','加強本國勞工訓練媒合。','推動營建自動化。','全面開放移工進駐工地。'],
+   explanation:'以整體性思維提出三項解決對策：合理檢討移工規定、推動營建自動化、加強本勞訓練媒合。'},
+  {kind:'是非題', course:2, no:28, answer:'X', law:'第3條', explanation:null,
+   stem:'地方機關以中央機關補助款辦理採購，其補助金額未達公告金額者，不適用採購法之規定。',
+   notes:[{type:'replace', text:'依政府採購法第 3 條，政府機關辦理採購即依本法之規定，條文未設補助金額門檻；地方機關以中央補助款辦理採購仍適用本法，故本題為錯。第 4 條「補助金額在公告金額以上」的門檻，對象是接受機關補助的法人或團體。'}]},
+  {kind:'選擇題', course:2, no:10, answer:3, law:'第6條',
+   stem:'下列何者違反採購法第6條第1項公平合理原則？',
+   options:['廠商履約期間因機關提前使用目的，採部分驗收，並於部分驗收後將相關之履約保證金部分發還。','機關無法順利取得廠商履約所需土地，通知廠商暫停履約，並暫時發還履約保證金。','公開招標案件，履約期間因廠商財務困難，辦理契約變更，增列給付預付款，契約價金不變。','道路工程得標廠商因法定工時縮短，要求延長工期，機關認為部分有理由，同意廠商之部分要求。'],
+   explanation:'採購契約範本第二十一條契約約定之採購標的，其有下列情形之一者，廠商得敘明理由，檢附規格、功能、效益及價格比較表，徵得機關書面同意後，以其他規格、功能及效益相同或較優者代之。但不得據以增加契約價金。其因而減省廠商履約費用者，應自契約價金中扣除。',
+   notes:[{type:'correct', text:'解析所引文字為採購契約要項第 21 點（廠商要求變更契約，以規格、功能及效益相同或較優者替代原標的），非「採購契約範本第二十一條」，與選項 3 增列預付款無關；本題依據為政府採購法第 6 條第 1 項公平合理原則。'}]},
+];
+const NOTE_TITLE = {replace:'審查說明', correct:'出處更正', law:'法條更正', answer:'答案註記'};
+
+const $ = s => document.querySelector(s);
+const card = $('#card'), front = $('#front'), back = $('#back'), slot = $('#slot'), floor = $('#floor'), aura = $('#aura');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S = {theta:0, vel:0, target:0, mode:'idle', landed:true, prevDiff:0, onLand:null};
+let qi = 0, q = null, answered = false, isOk = false, busyNext = false, slow = false;
+const timeScale = () => slow ? 0.2 : 1;
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const svgUse = (id, cls) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', id === 'g-star' ? '0 0 24 24' : '0 0 36 36'); if (cls) s.setAttribute('class', cls); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#' + id); s.append(u); return s; };
+
+/* 四角花飾與框上星芒：兩面各一套 */
+for (const face of [front, back]){
+  const paper = face.querySelector('.paper');
+  for (const pos of ['tl','tr','bl','br']) paper.append(svgUse('g-corner', 'corner ' + pos));
+  [[0,18,0],[100,62,1.7],[37,100,3.1],[0,83,4.2],[64,0,2.4]].forEach(([x, y, d]) => {
+    const sp = el('i', 'spark'); sp.style.left = x + '%'; sp.style.top = y + '%'; sp.style.animationDelay = d + 's';
+    sp.append(svgUse('g-star')); face.append(sp);
+  });
+}
+
+/* ---------- 題目 ---------- */
+function loadQuestion(i){
+  q = QUESTIONS[i % QUESTIONS.length];
+  answered = false; isOk = false;
+  Object.assign(S, {theta:0, vel:0, target:0, mode:'idle', landed:true, onLand:null});
+  const box0 = $('#frontBody'); box0.replaceChildren();
+  const fb = el('div', 'inner'); box0.append(fb);
+  fb.append(el('div', 'meta', `${q.kind}・${COURSES[q.course]}・第 ${q.no} 題`), el('p', 'stem', q.stem));
+  const box = el('div', q.options ? 'mc' : 'tf');
+  const choices = q.options ? q.options.map((t, k) => [k + 1, t]) : [['O', null], ['X', null]];
+  for (const [val, text] of choices){
+    const b = el('button', 'btn'); b.dataset.val = val;
+    if (text) b.append(el('span', 'no', String(val)), el('span', null, text)); else b.textContent = val;
+    b.addEventListener('click', () => answer(val, b));
+    box.append(b);
+  }
+  fb.append(box); box0.scrollTop = 0;
+  $('#frontFoot').hidden = true;
+  $('#backBody').replaceChildren();
+  render();
+}
+
+function fillBack(choice){
+  const bb = $('#backBody'); bb.replaceChildren();
+  const v = el('div', 'verdict ' + (isOk ? 'ok' : 'bad'));
+  const txt = el('div'); txt.append(el('strong', null, isOk ? '答對了' : '答錯了'), el('span', null, `正解 ${q.answer}｜你選 ${choice}`));
+  v.append(el('div', 'seal', isOk ? '正' : '誤'), txt);
+  bb.append(v);
+  if (q.options) bb.append(el('p', null, `正解：(${q.answer}) ${q.options[q.answer - 1]}`));
+  if (q.law) bb.append(el('h3', null, '法條'), el('p', null, `政府採購法${q.law}`));
+  if (q.explanation) bb.append(el('h3', null, '解析'), el('p', null, q.explanation));
+  for (const n of q.notes) bb.append(el('h3', null, NOTE_TITLE[n.type] || '註記'), el('p', null, n.text));
+  bb.scrollTop = 0;
+}
+
+function answer(choice, btn){
+  if (answered || busyNext) return;
+  answered = true; isOk = String(choice) === String(q.answer);
+  btn.classList.add('chosen');
+  $('#frontBody').querySelectorAll('.btn').forEach(b => b.disabled = true);
+  fillBack(choice);
+  flipTo(S.theta + 180, () => { markFront(); stamp(); });
+}
+
+function markFront(){
+  $('#frontBody').querySelectorAll('.btn').forEach(b => {
+    if (String(b.dataset.val) === String(q.answer)) b.classList.add('is-ans');
+    else if (b.classList.contains('chosen')) b.classList.add('is-wrong');
+  });
+  $('#frontFoot').hidden = false;
+}
+
+function stamp(){
+  const s = back.querySelector('.seal');
+  if (s && !reduced) s.animate([{transform:'rotate(-8deg) scale(1.9)', opacity:0}, {transform:'rotate(-8deg) scale(1)', opacity:1}],
+    {duration:280 / timeScale(), easing:'cubic-bezier(.3,1.5,.5,1)'});
+}
+
+/* ---------- 光影翻轉（試驗頁選定的樣式） ---------- */
+function flipTo(target, onLand){
+  S.onLand = onLand || null;
+  if (reduced){ S.theta = target; render(); land(); return; }
+  S.mode = 'spring'; S.target = target; S.landed = false; S.prevDiff = S.theta - target;
+  kick();
+}
+function land(){
+  const f = S.onLand; S.onLand = null;
+  const r = card.getBoundingClientRect();
+  burst(r.left + 4, r.top + r.height * .5, 10); burst(r.right - 4, r.top + r.height * .5, 10);
+  if (f) f();
+}
+
+let running = false, last = 0;
+function kick(){ if (!running){ running = true; last = performance.now(); requestAnimationFrame(tick); } }
+function tick(now){
+  const dt = Math.min((now - last) / 1000, 1/20) * timeScale(); last = now;
+  step(dt); render();
+  if (S.mode !== 'idle') requestAnimationFrame(tick); else running = false;
+}
+function step(dt){
+  if (S.mode !== 'spring') return;
+  const T = 0.75, zeta = 0.75, k = Math.pow(2*Math.PI/T, 2), c = 4*Math.PI*zeta/T, h = 1/480;
+  for (let n = Math.ceil(dt / h); n > 0; n--){ const a = -k*(S.theta - S.target) - c*S.vel; S.vel += a*h; S.theta += S.vel*h; }
+  const diff = S.theta - S.target;
+  if (!S.landed && (Math.sign(diff) !== Math.sign(S.prevDiff) || Math.abs(diff) < 1)){ S.landed = true; land(); }
+  S.prevDiff = diff;
+  if (Math.abs(diff) < 0.05 && Math.abs(S.vel) < 1){ S.theta = S.target; S.vel = 0; S.mode = 'idle'; }
+}
+
+const shades = [], sheens = [], bars = [];
+for (const face of [front, back]){
+  const sh = el('i', 'shade'), sn = el('i', 'sheen'), b = el('b');
+  sn.append(b); face.append(sh, sn); shades.push(sh); sheens.push(sn); bars.push(b);
+}
+function render(){
+  const rad = S.theta * Math.PI / 180, side = Math.abs(Math.sin(rad)), cos = Math.cos(rad);
+  const lift = 56 * side;
+  card.style.transform = `translateZ(${lift}px) rotateY(${S.theta}deg)`;
+  const frontOn = cos > 0;
+  front.style.visibility = frontOn ? 'visible' : 'hidden';
+  back.style.visibility = frontOn ? 'hidden' : 'visible';
+  front.setAttribute('aria-hidden', String(!frontOn));
+  back.setAttribute('aria-hidden', String(frontOn));
+  const narrow = 0.3 + 0.7 * Math.abs(cos), up = side;
+  floor.style.transform = `translateY(${lift * .3}px) scale(${narrow * (1 + up * .25)}, ${1 + up * .6})`;
+  floor.style.opacity = String(1 - up * .55);
+  aura.style.transform = `scaleX(${narrow})`;
+  const u = (((S.theta % 180) + 180) % 180) / 180;
+  shades.forEach(s => s.style.opacity = String(.5 * side));
+  sheens.forEach(s => s.style.opacity = String(Math.min(1, side * 1.8)));
+  bars.forEach(b => b.style.transform = `translateX(${u * 270}%)`);
+}
+
+card.addEventListener('click', e => {
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (!act || busyNext) return;
+  if (act === 'peek') flipTo(Math.round(S.theta / 180) * 180 - 180);
+  if (act === 'show') flipTo(Math.round(S.theta / 180) * 180 + 180);
+  if (act === 'next') nextCard();
+});
+function nextCard(){
+  busyNext = true;
+  const ts = timeScale();
+  const out = reduced ? [{opacity:1}, {opacity:0}] : [{transform:'none', opacity:1}, {transform:'translateX(-110%) rotate(-7deg)', opacity:0}];
+  const inn = reduced ? [{opacity:0}, {opacity:1}] : [{transform:'translateY(28px) scale(.95)', opacity:0}, {transform:'none', opacity:1}];
+  slot.animate(out, {duration:300 / ts, easing:'cubic-bezier(.4,0,.6,1)'}).finished.then(() => {
+    loadQuestion(++qi);
+    return slot.animate(inn, {duration:380 / ts, easing:'cubic-bezier(.2,.8,.2,1)'}).finished;
+  }).then(() => { busyNext = false; });
+}
+
+$('#slow').addEventListener('change', e => slow = e.target.checked);
+
+/* ---------- 卡片背後的動畫：同一張 canvas，一次只跑一種 ---------- */
+const cv = $('#motes'), cx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const GOLD = '240,212,138', GOLD_HI = '255,236,170';
+const rnd = (a, b) => a + Math.random() * (b - a);
+function outsideCard(){
+  const r = slot.getBoundingClientRect();
+  for (let i = 0; i < 12; i++){ const x = Math.random() * W, y = Math.random() * H;
+    if (x < r.left - 6 || x > r.right + 6 || y < r.top - 6 || y > r.bottom + 6) return {x, y}; }
+  return {x:Math.random() * W, y:Math.random() * H};
+}
+function cardCenter(){ const r = slot.getBoundingClientRect(); return {x:r.left + r.width / 2, y:r.top + r.height / 2, w:r.width, h:r.height}; }
+function glowDot(x, y, r, a, rgb = GOLD_HI){
+  const g = cx.createRadialGradient(x, y, 0, x, y, r * 4);
+  g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(.35, `rgba(${GOLD},${a * .5})`); g.addColorStop(1, `rgba(${GOLD},0)`);
+  cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r * 4, 0, Math.PI * 2); cx.fill();
+}
+/* 符文：3×3 格點上隨機連 3–5 筆，一定有一根直幹，看起來才像符文 */
+const GRID = [-1, 0, 1].flatMap(y => [-1, 0, 1].map(x => [x, y]));
+function makeRune(){
+  const sx = Math.random() < .5 ? -1 : 0, segs = [[[sx, -1], [sx, 1]]];
+  const n = 2 + Math.floor(Math.random() * 3);
+  while (segs.length < n + 1){
+    const a = GRID[Math.floor(Math.random() * 9)], b = GRID[Math.floor(Math.random() * 9)];
+    if (a !== b && Math.hypot(a[0] - b[0], a[1] - b[1]) <= 2.3) segs.push([a, b]);
+  }
+  return segs;
+}
+function strokeRune(segs, x, y, size, p){
+  const total = segs.length, upto = p * total;
+  cx.beginPath();
+  segs.forEach(([a, b], i) => {
+    const k = Math.max(0, Math.min(1, upto - i)); if (!k) return;
+    const ax = x + a[0] * size * .5, ay = y + a[1] * size, bx = x + b[0] * size * .5, by = y + b[1] * size;
+    cx.moveTo(ax, ay); cx.lineTo(ax + (bx - ax) * k, ay + (by - ay) * k);
+  });
+  cx.stroke();
+}
+
+const FX = {
+  motes: {name:'金色微塵', desc:'細小金粉緩緩往上飄，忽明忽暗。',
+    init(){ this.m = Array.from({length:30}, () => this.one(true)); },
+    one(init){ return {x:Math.random() * W, y:init ? Math.random() * H : H + 10, r:rnd(.6, 2.1), vy:-rnd(5, 17), ph:rnd(0, 6.3), sw:rnd(6, 20), tw:rnd(.8, 2.6)}; },
+    frame(dt, t){
+      this.m.forEach((m, i) => {
+        m.y += m.vy * dt; if (m.y < -10) this.m[i] = this.one(false);
+        glowDot(m.x + Math.sin(t * .4 + m.ph) * m.sw, m.y, m.r, .25 + .35 * (.5 + .5 * Math.sin(t * m.tw + m.ph)));
+      });
+    }},
+
+  sigil: {name:'法陣光環', desc:'卡片後方一個大法陣，內外兩圈反向慢轉，光一呼一吸。',
+    init(){
+      const c = cardCenter(), R = Math.max(c.w, c.h) * .62;
+      this.R = R; this.outer = this.layer(R, true); this.inner = this.layer(R, false);
+    },
+    layer(R, outer){
+      const size = Math.ceil((R + 24) * 2), c = document.createElement('canvas'); c.width = c.height = size * DPR;
+      const g = c.getContext('2d'); g.scale(DPR, DPR); g.translate(size / 2, size / 2);
+      g.strokeStyle = `rgba(${GOLD},.75)`; g.fillStyle = `rgba(${GOLD},.75)`; g.shadowColor = `rgba(${GOLD},.9)`; g.shadowBlur = 8; g.lineCap = 'round';
+      const ring = r => { g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke(); };
+      if (outer){
+        g.lineWidth = 1.4; ring(R); g.lineWidth = .8; ring(R - 10); ring(R - 46);
+        for (let i = 0; i < 96; i++){ const a = i / 96 * Math.PI * 2, l = i % 8 ? 4 : 9; g.beginPath(); g.moveTo(Math.cos(a) * R, Math.sin(a) * R); g.lineTo(Math.cos(a) * (R - l), Math.sin(a) * (R - l)); g.stroke(); }
+        for (let i = 0; i < 12; i++){
+          const a = i / 12 * Math.PI * 2; g.save(); g.rotate(a); g.translate(0, -(R - 28));
+          g.lineWidth = 1.1; const segs = makeRune(); g.beginPath();
+          segs.forEach(([p, q]) => { g.moveTo(p[0] * 4.5, p[1] * 9); g.lineTo(q[0] * 4.5, q[1] * 9); }); g.stroke(); g.restore();
+        }
+      } else {
+        const r = R * .58; g.lineWidth = 1.2; ring(r); ring(r * .42);
+        for (const off of [0, Math.PI / 4]){ g.beginPath(); for (let i = 0; i <= 4; i++){ const a = off + i / 4 * Math.PI * 2; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.stroke(); }
+        g.lineWidth = .7; g.setLineDash([3, 5]); ring(r * .78); g.setLineDash([]);
+        for (let i = 0; i < 8; i++){ const a = i / 8 * Math.PI * 2 + Math.PI / 8; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, 2.6, 0, Math.PI * 2); g.fill(); }
+      }
+      return c;
+    },
+    frame(dt, t){
+      const c = cardCenter(), pulse = .38 + .2 * Math.sin(t * 1.3);
+      cx.globalAlpha = pulse;
+      for (const [img, sp] of [[this.outer, .05], [this.inner, -.09]]){
+        const s = img.width / DPR;
+        cx.save(); cx.translate(c.x, c.y); cx.rotate(t * sp); cx.drawImage(img, -s / 2, -s / 2, s, s); cx.restore();
+      }
+      cx.globalAlpha = 1;
+    }},
+
+  candle: {name:'燭火餘燼', desc:'底部燭光一閃一閃地照上來，火星往上竄。',
+    init(){ this.e = Array.from({length:36}, () => this.one(true)); this.f = 0; },
+    one(init){ return {x:W / 2 + rnd(-.45, .45) * W, y:init ? rnd(.2, 1) * H : H + rnd(0, 40), vy:-rnd(35, 95), vx:rnd(-8, 8), ph:rnd(0, 6.3), life:rnd(3, 6.5), age:init ? rnd(0, 3) : 0, r:rnd(.7, 1.8)}; },
+    frame(dt, t){
+      this.f += (Math.random() - .5) * dt * 6; this.f *= .96;
+      const k = .82 + .08 * Math.sin(t * 7.3) + .05 * Math.sin(t * 13.1 + 1) + this.f * .2;
+      const g = cx.createRadialGradient(W / 2, H * .98, 0, W / 2, H * .98, H * .9 * (.95 + k * .08));
+      g.addColorStop(0, `rgba(255,176,80,${.55 * k})`); g.addColorStop(.35, `rgba(220,130,50,${.22 * k})`); g.addColorStop(1, 'rgba(200,110,40,0)');
+      cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+      cx.lineCap = 'round';
+      this.e.forEach((e, i) => {
+        e.age += dt; if (e.age > e.life || e.y < -20){ this.e[i] = this.one(false); return; }
+        e.x += (e.vx + Math.sin(t * 2 + e.ph) * 14) * dt; e.y += e.vy * dt;
+        const a = Math.sin(Math.PI * e.age / e.life) * .9, hot = 1 - e.age / e.life;
+        cx.strokeStyle = `rgba(255,${Math.round(150 + 80 * hot)},${Math.round(60 + 60 * hot)},${a})`; cx.lineWidth = e.r;
+        cx.beginPath(); cx.moveTo(e.x, e.y); cx.lineTo(e.x - e.vx * .06, e.y - e.vy * .07); cx.stroke();
+      });
+    }},
+
+  stars: {name:'星圖連線', desc:'微光星點閃爍，金線慢慢把幾顆星連成星座，偶爾劃過流星。',
+    init(){
+      this.s = Array.from({length:90}, () => { const p = outsideCard(); return {fx:p.x / W, fy:p.y / H, r:rnd(.5, 1.7), ph:rnd(0, 6.3), tw:rnd(.6, 2)}; });
+      this.c = [this.make(0), this.make(-3.5)]; this.shoot = null; this.next = rnd(3, 6);
+    },
+    make(t0){
+      const S = this.s, start = S[Math.floor(Math.random() * S.length)], path = [start], lim = .22;
+      while (path.length < 6){
+        const p = path[path.length - 1]; let best = null, bd = lim;
+        for (const q of S){ if (path.includes(q)) continue; const d = Math.hypot((q.fx - p.fx) * W / H, q.fy - p.fy); if (d > .05 && d < bd){ bd = d; best = q; } }
+        if (!best) break; path.push(best);
+      }
+      return {path, t:t0};
+    },
+    frame(dt, t){
+      this.s.forEach(s => glowDot(s.fx * W, s.fy * H, s.r, .3 + .45 * (.5 + .5 * Math.sin(t * s.tw + s.ph))));
+      cx.lineWidth = 1.2; cx.lineCap = 'round';
+      this.c.forEach((c, i) => {
+        c.t += dt; if (c.t < 0) return;
+        const draw = Math.min(1, c.t / 2.6), fade = c.t > 6 ? Math.max(0, 1 - (c.t - 6) / 1.6) : 1;
+        if (c.t > 7.6){ this.c[i] = this.make(-rnd(.5, 2)); return; }
+        const segs = c.path.length - 1, upto = draw * segs;
+        cx.strokeStyle = `rgba(${GOLD},${.75 * fade})`; cx.beginPath();
+        for (let k = 0; k < segs; k++){
+          const f = Math.max(0, Math.min(1, upto - k)); if (!f) break;
+          const a = c.path[k], b = c.path[k + 1];
+          cx.moveTo(a.fx * W, a.fy * H); cx.lineTo((a.fx + (b.fx - a.fx) * f) * W, (a.fy + (b.fy - a.fy) * f) * H);
+        }
+        cx.stroke();
+        c.path.forEach((p, k) => { if (k <= upto) glowDot(p.fx * W, p.fy * H, 1.6, .7 * fade); });
+      });
+      this.next -= dt;
+      if (this.next < 0 && !this.shoot){ this.shoot = {x:rnd(.1, .9) * W, y:rnd(0, .35) * H, vx:rnd(-1, 1) < 0 ? -520 : 520, vy:260, age:0}; this.next = rnd(5, 9); }
+      const s = this.shoot;
+      if (s){
+        s.age += dt; s.x += s.vx * dt; s.y += s.vy * dt;
+        const a = Math.sin(Math.PI * Math.min(1, s.age / .9));
+        const g = cx.createLinearGradient(s.x, s.y, s.x - s.vx * .16, s.y - s.vy * .16);
+        g.addColorStop(0, `rgba(${GOLD_HI},${a})`); g.addColorStop(1, `rgba(${GOLD},0)`);
+        cx.strokeStyle = g; cx.lineWidth = 1.6; cx.beginPath(); cx.moveTo(s.x, s.y); cx.lineTo(s.x - s.vx * .16, s.y - s.vy * .16); cx.stroke();
+        if (s.age > .9) this.shoot = null;
+      }
+    }},
+
+  runes: {name:'符文浮現', desc:'古代符文一筆一筆描出來、發光，再淡出消失。',
+    init(){ this.r = Array.from({length:14}, (_, i) => this.one(-i * .4));  /* 切過來就陸續出現，不要空等 */ },
+    one(t0){ const p = outsideCard(); return {x:p.x, y:p.y, size:rnd(12, 24), segs:makeRune(), t:t0, life:rnd(4.5, 7), drift:rnd(4, 10)}; },
+    frame(dt){
+      cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.shadowColor = `rgba(${GOLD},.9)`;
+      this.r.forEach((r, i) => {
+        r.t += dt; if (r.t < 0) return; if (r.t > r.life){ this.r[i] = this.one(-rnd(0, 2)); return; }
+        const p = Math.min(1, r.t / 1.6), fadeOut = Math.max(0, (r.t - (r.life - 1.4)) / 1.4);
+        const a = .5 * (1 - fadeOut) * Math.min(1, r.t / .4), y = r.y - r.t * r.drift;
+        cx.shadowBlur = 10 * (1 - fadeOut); cx.strokeStyle = `rgba(${GOLD},${a})`; cx.lineWidth = 1.4;
+        strokeRune(r.segs, r.x, y, r.size, p);
+      });
+      cx.shadowBlur = 0;
+    }},
+
+  flow: {name:'流金煙霧', desc:'金色的絲狀煙霧緩緩流動，像魔力在空氣中流轉。', trails:true,
+    init(){ this.p = Array.from({length:320}, () => this.one()); },
+    one(){ return {x:Math.random() * W, y:Math.random() * H, life:rnd(2, 6), age:0}; },
+    frame(dt, t){
+      // 每格淡出量太小時 8 位元 alpha 會卡住，留下永久殘影，所以下限 .06
+      cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = `rgba(0,0,0,${Math.min(1, Math.max(.06, dt * 3))})`; cx.fillRect(0, 0, W, H); cx.restore();
+      cx.lineWidth = 1.6; cx.strokeStyle = `rgba(${GOLD},.3)`; cx.beginPath();
+      this.p.forEach((p, i) => {
+        p.age += dt; if (p.age > p.life || p.x < -5 || p.x > W + 5 || p.y < -5 || p.y > H + 5){ this.p[i] = this.one(); return; }
+        const ang = Math.sin(p.x * .004 + t * .12) * 1.7 + Math.cos(p.y * .005 - t * .09) * 1.7 + Math.sin((p.x + p.y) * .0018 + t * .05);
+        const nx = p.x + Math.cos(ang) * 38 * dt, ny = p.y + Math.sin(ang) * 38 * dt - 6 * dt;
+        cx.moveTo(p.x, p.y); cx.lineTo(nx, ny); p.x = nx; p.y = ny;
+      });
+      cx.stroke();
+    }},
+};
+
+let fx = null;
+function size(){ DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0); if (fx) fx.init(); }
+function useFx(id){
+  fx = FX[id]; cx.clearRect(0, 0, W, H); fx.init();
+  document.querySelectorAll('#fxSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id)));
+  $('#fxDesc').textContent = fx.desc;
+  if (reduced){ cx.clearRect(0, 0, W, H); fx.frame(0, 0); }
+}
+const sparks = [];
+function burst(x, y, n){
+  if (reduced) return;
+  for (let i = 0; i < n; i++){ const a = Math.random() * Math.PI * 2, v = 40 + Math.random() * 110;
+    sparks.push({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 30, r:.8 + Math.random() * 1.6, life:.5 + Math.random() * .6, age:0}); }
+}
+let mLast = performance.now();
+function drawFx(now){
+  const dt = Math.min((now - mLast) / 1000, .05) * timeScale(), t = now / 1000 * timeScale(); mLast = now;
+  if (!fx.trails) cx.clearRect(0, 0, W, H);
+  cx.globalCompositeOperation = 'lighter';
+  fx.frame(dt, t);
+  for (let i = sparks.length - 1; i >= 0; i--){
+    const s = sparks[i]; s.age += dt; if (s.age > s.life){ sparks.splice(i, 1); continue; }
+    s.vx *= .97; s.vy = s.vy * .97 + 40 * dt; s.x += s.vx * dt; s.y += s.vy * dt;
+    glowDot(s.x, s.y, s.r, .9 * (1 - s.age / s.life));
+  }
+  cx.globalCompositeOperation = 'source-over';
+  requestAnimationFrame(drawFx);
+}
+for (const [id, f] of Object.entries(FX)){
+  const b = el('button', null, f.name); b.dataset.v = id; b.addEventListener('click', () => useFx(id)); $('#fxSeg').append(b);
+}
+size(); addEventListener('resize', size);
+useFx('stars');
+if (!reduced) requestAnimationFrame(drawFx);
+
+/* ---------- 卡面動畫：兩面各放一套圖層 ---------- */
+const CARD_FX = {
+  sigil:   {name:'法陣浮水印', desc:'紙面淡淡的法陣，極慢地旋轉（目前這版）。'},
+  ink:     {name:'金墨暈染', desc:'淡金色墨痕在紙上慢慢暈開、再褪去，此起彼落。'},
+  candle:  {name:'燭光搖曳', desc:'像旁邊點著燭火，暖光在紙面上輕輕晃動、忽明忽暗。'},
+  filigree:{name:'金絲流紋', desc:'紙面浮著金色花紋，一道光沿著紋路緩緩流過。'},
+  runes:   {name:'邊緣符文', desc:'內框一圈小符文依序亮起，像光沿著框邊繞行。'},
+  sweep:   {name:'流光掃過', desc:'每隔幾秒，一道斜光從紙面掃過，像紙裡夾著金箔。'},
+};
+const FILIGREE = [
+  'M4 22C20 8 34 30 50 16S80 4 96 22', 'M4 118C20 132 34 110 50 124S80 136 96 118',
+  'M8 34C16 50 4 62 12 76S20 98 8 108', 'M92 34C84 50 96 62 88 76S80 98 92 108',
+  'M30 70C30 50 70 50 70 70S30 90 30 70', 'M18 30c4-7 13-5 11 2s-9 4-8-2', 'M82 110c-4 7-13 5-11-2s9-4 8 2',
+];
+function runeSvg(){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '-1.3 -1.3 2.6 2.6');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', makeRune().map(([a, b]) => `M${a[0] * .55} ${a[1]}L${b[0] * .55} ${b[1]}`).join(''));
+  path.setAttribute('fill', 'none'); path.setAttribute('stroke', 'currentColor'); path.setAttribute('stroke-width', '.24'); path.setAttribute('stroke-linecap', 'round');
+  svg.append(path); return svg;
+}
+function runeRing(){
+  // 順時針排一圈：上緣左→右、右緣上→下、下緣右→左、左緣下→上，延遲依序遞增就成了繞行
+  const pts = [], xs = [20, 30, 40, 50, 60, 70, 80], ys = [17, 28, 39, 50, 61, 72, 83];
+  xs.forEach(x => pts.push([x, 2.8])); ys.forEach(y => pts.push([96.6, y]));
+  [...xs].reverse().forEach(x => pts.push([x, 97.2])); [...ys].reverse().forEach(y => pts.push([3.4, y]));
+  const box = el('div', 'fx-runes');
+  pts.forEach(([x, y], i) => { const r = el('i'); r.style.left = x + '%'; r.style.top = y + '%'; r.style.animationDelay = (i * 5.6 / pts.length) + 's'; r.append(runeSvg()); box.append(r); });
+  return box;
+}
+for (const face of [front, back]){
+  const paper = face.querySelector('.paper'), host = el('div', 'cardfx');
+  const ink = el('div', 'fx-ink');
+  [[28, 30, 0], [70, 58, 3.7], [38, 80, 7.3]].forEach(([x, y, d]) => { const b = el('b'); b.style.left = x + '%'; b.style.top = y + '%'; b.style.animationDelay = d + 's'; ink.append(b); });
+  const candle = el('div', 'fx-candle'); candle.append(el('i'));
+  const sweep = el('div', 'fx-sweep');
+  host.append(ink, candle, runeRing(), sweep);
+  host.insertAdjacentHTML('beforeend', '<svg class="fx-filigree" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice">' +
+    FILIGREE.map(d => `<path class="base" d="${d}" pathLength="100"/>`).join('') +
+    FILIGREE.map((d, i) => `<path class="flow" d="${d}" pathLength="100" style="animation-delay:${-i * 1.3}s"/>`).join('') + '</svg>');
+  paper.insertBefore(host, paper.querySelector('.body'));
+}
+function renderCardFx(){
+  const on = (document.documentElement.dataset.cardfx || '').split(' ').filter(Boolean);
+  document.querySelectorAll('#cardFxSeg button').forEach(b => b.setAttribute('aria-pressed', String(on.includes(b.dataset.v))));
+  $('#inkK').closest('.slider').hidden = !on.includes('ink');
+  $('#runeK').closest('.slider').hidden = !on.includes('runes');
+}
+function toggleCardFx(id){
+  const on = new Set((document.documentElement.dataset.cardfx || '').split(' ').filter(Boolean));
+  on.has(id) ? on.delete(id) : on.add(id);
+  document.documentElement.dataset.cardfx = [...on].join(' ');
+  renderCardFx();
+}
+for (const [id, f] of Object.entries(CARD_FX)){
+  const b = el('button', null, f.name); b.dataset.v = id; b.title = f.desc; b.addEventListener('click', () => toggleCardFx(id)); $('#cardFxSeg').append(b);
+}
+/* 強度 100% 是原本的樣子；超過 100% 時透明度到頂，改加光暈半徑 */
+const rootStyle = document.documentElement.style;
+function setInk(k){
+  rootStyle.setProperty('--ink-a1', (.16 * k).toFixed(3));
+  rootStyle.setProperty('--ink-a2', (.28 * k).toFixed(3));
+  rootStyle.setProperty('--ink-a3', Math.min(.95, .55 * k).toFixed(3));
+  $('#inkOut').textContent = Math.round(k * 100) + '%';
+}
+function setRune(k){
+  rootStyle.setProperty('--rune-lo', Math.min(1, .28 * k).toFixed(3));
+  rootStyle.setProperty('--rune-hi', Math.min(1, k).toFixed(3));
+  rootStyle.setProperty('--rune-glow', (3 * k).toFixed(1) + 'px');
+  $('#runeOut').textContent = Math.round(k * 100) + '%';
+}
+$('#inkK').addEventListener('input', e => setInk(e.target.value / 100));
+$('#runeK').addEventListener('input', e => setRune(e.target.value / 100));
+setInk(.2); setRune(1.5);  /* 使用者定案：金墨 20%、符文 150%（2026-10-02） */
+renderCardFx();
+
+loadQuestion(0);
+</script>
+</body>
+</html>
