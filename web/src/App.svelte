@@ -4,8 +4,8 @@
   import StartScreen from './components/StartScreen.svelte';
   import { start as startStars } from './lib/starfield.js';
   import { bakeTextures } from './lib/textures.js';
-  import { load, save, record, stats } from './lib/progress.js';
-  import { buildDeck, deckKey, newSeed } from './lib/deck.js';
+  import { load, save, record, stats, MASTER } from './lib/progress.js';
+  import { pool, pick, deckKey } from './lib/deck.js';
   import INDEX from 'virtual:bank-index';
 
   // 題庫在 repo 的 data/questions/，由 tools/convert.py 產生；動態載入，選到那個題型才下載
@@ -19,15 +19,15 @@
   let progress = load();
   let rev = $state(0);            // 紀錄是普通物件，改完遞增 rev 讓畫面重算
   let view = $state('start');
-  let kind = $state('true-false'), course = $state(0), order = $state('random');
-  let deck = $state.raw(null);     // { key, ids, pos }
+  let kind = $state('true-false'), course = $state(0), mode = $state('all');
+  let deck = $state.raw(null);     // { key, cur, recent }：目前這題與最近出過的題號
   let loadError = $state('');
   let starting = $state(false);    // 按了開始，題庫還在下載
   const inLine = /\bLine\//.test(navigator.userAgent);
 
   let bank = $derived(banks[kind] ?? null);
   let byId = $derived(bank ? new Map(bank.questions.map(q => [q.id, q])) : new Map());
-  let question = $derived(deck && view === 'quiz' ? byId.get(deck.ids[deck.pos]) : null);
+  let question = $derived(deck && view === 'quiz' ? byId.get(deck.cur) : null);
   let courseName = $derived(bank && question ? bank.courses.find(c => c.id === question.course)?.name ?? '' : '');
   const generated = INDEX['true-false'].generated;
 
@@ -52,37 +52,31 @@
 
   function persist(){ save(progress); rev++; }
 
-  async function begin(resume){
+  async function begin(){
     const k = kind;  // 等下載時題型可能被切換，以按下當時的為準
     if (!banks[k]){
       starting = true; loadError = '';
       try { await ensure(k); } catch { return; } finally { starting = false; }
       if (k !== kind) return;
     }
-    const key = deckKey(k, course, order);
-    let st = progress.decks[key];
-    if (!resume || !st) st = progress.decks[key] = { seed: newSeed(), pos: 0 };
-    const ids = buildDeck(banks[k].questions, course, order, st.seed);
-    if (st.pos >= ids.length) st.pos = 0;
-    deck = { key, ids, pos: st.pos };
-    persist();
+    const cur = pick(pool(banks[k].questions, course, mode, progress.answers), progress.answers, []);
+    if (!cur) return;
+    deck = { key: deckKey(k, course, mode), cur, recent: [] };
     view = 'quiz';
     scrollTo(0, 0);
   }
 
   function onresult(ok){ record(progress, question.id, ok); persist(); }
 
+  // 錯題模式下答對的題目可能已經離開錯題，所以每題都重抓範圍
   function onnext(){
-    const pos = deck.pos + 1;
-    progress.decks[deck.key].pos = pos;
-    persist();
-    if (pos >= deck.ids.length) { view = 'done'; return; }
-    deck = { ...deck, pos };
+    const recent = [...deck.recent, deck.cur].slice(-10);
+    const cur = pick(pool(bank.questions, course, mode, progress.answers), progress.answers, recent);
+    if (!cur) { view = 'done'; return; }
+    deck = { ...deck, cur, recent };
   }
 
-  function again(){ progress.decks[deck.key] = { seed: newSeed(), pos: 0 }; begin(true); }
-
-  let roundStats = $derived.by(() => { rev; return view === 'done' && bank ? stats(progress, bank.questions, course) : null; });
+  let rangeStats = $derived.by(() => { rev; return bank ? stats(progress, bank.questions, course) : null; });
 
   onMount(() => { bakeTextures(); startStars(canvas); });
 </script>
@@ -103,22 +97,22 @@
   {#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
 
   {#if view === 'start'}
-    <StartScreen bind:kind bind:course bind:order index={INDEX[kind]} {progress} {rev} {starting} onstart={begin} />
+    <StartScreen bind:kind bind:course bind:mode index={INDEX[kind]} {progress} {rev} {starting} onstart={begin} />
   {:else if view === 'quiz' && question}
     <nav class="bar">
       <button class="back" onclick={() => view = 'start'}>‹ 選題</button>
-      <span>{order === 'random' ? '隨機' : '依題號'}・第 {deck.pos + 1}／{deck.ids.length} 題</span>
+      {#if rangeStats}<span>{mode === 'wrong' ? `錯題剩 ${rangeStats.wrong} 題` : '全部'}・熟練 {rangeStats.mastered}／{rangeStats.total}</span>{/if}
     </nav>
     {#key deck.key}
       <QuizCard {question} kindLabel={bank.label} {courseName} {onresult} {onnext} />
     {/key}
   {:else if view === 'done'}
     <section class="done">
-      <h2>這一輪做完了</h2>
-      <p>這一輪的 {deck.ids.length} 題已經到最後一題。</p>
-      {#if roundStats}<p>這個範圍已練 {roundStats.done} 題，最近一次答對 {roundStats.right} 題。</p>{/if}
+      <h2>錯題都練完了</h2>
+      <p>這個範圍的錯題都已連續答對 {MASTER} 次。</p>
+      {#if rangeStats}<p>已練 {rangeStats.done}／{rangeStats.total} 題，熟練 {rangeStats.mastered} 題。</p>{/if}
       <div class="go">
-        <button class="btn primary" onclick={again}>再來一輪</button>
+        <button class="btn primary" onclick={() => { mode = 'all'; begin(); }}>改練全部題目</button>
         <button class="btn" onclick={() => view = 'start'}>回選題</button>
       </div>
     </section>

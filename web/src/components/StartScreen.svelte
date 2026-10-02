@@ -1,25 +1,18 @@
 <script>
   import { statsByPrefix } from '../lib/progress.js';
-  import { deckKey } from '../lib/deck.js';
 
   /** index 為目前題型的課程清單（建置時產生，不必等題庫）；starting 為按下開始後還在等題庫下載；rev 變動時重算進度 */
-  let { kind = $bindable(), course = $bindable(), order = $bindable(), index, progress, rev, starting, onstart } = $props();
+  let { kind = $bindable(), course = $bindable(), mode = $bindable(), index, progress, rev, starting, onstart } = $props();
 
   const KINDS = [['true-false', '是非題'], ['multiple-choice', '選擇題']];
-  const ORDERS = [['random', '隨機'], ['number', '依題號']];
+  const MODES = [['all', '全部'], ['wrong', '錯題']];
 
   let rows = $derived.by(() => {
     rev;
     return [{ id: 0, name: '全部課程', count: index.total, prefix: index.prefix }, ...index.courses]
       .map(c => ({ ...c, ...statsByPrefix(progress, c.prefix, c.count) }));
   });
-  let saved = $derived.by(() => {
-    rev;
-    const st = progress.decks[deckKey(kind, course, order)];
-    if (!st || !st.pos) return null;
-    const total = course ? index.courses.find(c => c.id === course)?.count ?? 0 : index.total;
-    return st.pos < total ? { pos: st.pos, total } : null;
-  });
+  let noWrong = $derived(mode === 'wrong' && !(rows.find(r => r.id === course)?.wrong));
 </script>
 
 <section class="start">
@@ -32,10 +25,10 @@
     </div>
   </div>
   <div class="group">
-    <span class="lbl">順序</span>
+    <span class="lbl">出題</span>
     <div class="seg">
-      {#each ORDERS as [v, label]}
-        <button aria-pressed={order === v} onclick={() => order = v}>{label}</button>
+      {#each MODES as [v, label]}
+        <button aria-pressed={mode === v} onclick={() => mode = v}>{label}</button>
       {/each}
     </div>
   </div>
@@ -46,7 +39,7 @@
           <span class="name">{r.id ? `${r.id}. ` : ''}{r.name}</span>
           <span class="count">{r.total} 題</span>
           <span class="bar"><i style="width:{r.total ? r.done / r.total * 100 : 0}%"></i></span>
-          <span class="sub">{r.done ? `已練 ${r.done}・最近答對 ${r.right}` : '還沒練過'}</span>
+          <span class="sub">{r.done ? `已練 ${r.done}・熟練 ${r.mastered}・錯題 ${r.wrong}` : '還沒練過'}</span>
         </button>
       {/each}
   </div>
@@ -54,11 +47,10 @@
   <div class="go">
     {#if starting}
       <button class="btn primary" disabled>題庫下載中…</button>
-    {:else if saved}
-      <button class="btn primary" onclick={() => onstart(true)}>繼續（第 {saved.pos + 1}／{saved.total} 題）</button>
-      <button class="btn" onclick={() => onstart(false)}>重新開始</button>
+    {:else if noWrong}
+      <button class="btn primary" disabled>這個範圍沒有錯題</button>
     {:else}
-      <button class="btn primary" onclick={() => onstart(false)}>開始練習</button>
+      <button class="btn primary" onclick={onstart}>開始練習</button>
     {/if}
   </div>
 </section>

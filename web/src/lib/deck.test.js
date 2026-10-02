@@ -1,43 +1,78 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildDeck, shuffled, deckKey } from './deck.js';
-import { empty, load, save, record, stats, statsByPrefix } from './progress.js';
+import { pool, pick, mulberry32, deckKey, COOLDOWN } from './deck.js';
+import { empty, load, save, record, stats, statsByPrefix, isWrong, isMastered, streak, MASTER } from './progress.js';
 import { buildIndex } from './bank-index.js';
 
 const bank = kind => JSON.parse(readFileSync(new URL(`../../../data/questions/${kind}.json`, import.meta.url), 'utf8'));
 
 for (const kind of ['true-false', 'multiple-choice']){
   const d = bank(kind);
-  test(`${kind}：每個課程的牌組題數等於 courses 宣告的題數，且不重複`, () => {
+  test(`${kind}：每個課程的出題範圍題數等於 courses 宣告的題數，且不重複`, () => {
     for (const c of d.courses){
-      for (const order of ['random', 'number']){
-        const deck = buildDeck(d.questions, c.id, order, 42);
-        assert.equal(deck.length, c.count, `課程 ${c.id} ${order}`);
-        assert.equal(new Set(deck).size, deck.length);
-      }
+      const ids = pool(d.questions, c.id, 'all', {});
+      assert.equal(ids.length, c.count, `課程 ${c.id}`);
+      assert.equal(new Set(ids).size, ids.length);
     }
-    assert.equal(buildDeck(d.questions, 0, 'random', 7).length, d.questions.length);
+    assert.equal(pool(d.questions, 0, 'all', {}).length, d.questions.length);
+    assert.equal(pool(d.questions, 0, 'wrong', {}).length, 0);
   });
 }
 
-test('同一個種子打亂結果相同，不同種子不同（續練靠這個）', () => {
-  const ids = Array.from({ length: 200 }, (_, i) => i);
-  assert.deepEqual(shuffled(ids, 123), shuffled(ids, 123));
-  assert.notDeepEqual(shuffled(ids, 123), shuffled(ids, 124));
-  assert.notDeepEqual(shuffled(ids, 123), ids);
-  assert.deepEqual([...shuffled(ids, 9)].sort((a, b) => a - b), ids);
+test('錯題範圍只含錯過且還沒連續答對 3 次的題目', () => {
+  const qs = [{ id: 'a', course: 1 }, { id: 'b', course: 1 }, { id: 'c', course: 2 }, { id: 'd', course: 1 }];
+  const p = empty();
+  record(p, 'a', false); record(p, 'b', true); record(p, 'c', false);
+  assert.deepEqual(pool(qs, 1, 'wrong', p.answers), ['a']);
+  assert.deepEqual(pool(qs, 0, 'wrong', p.answers), ['a', 'c']);
 });
 
-test('依題號順序就是題庫原順序', () => {
-  const d = bank('true-false');
-  const deck = buildDeck(d.questions, 2, 'number', 1);
-  assert.deepEqual(deck, d.questions.filter(q => q.course === 2).map(q => q.id));
+test(`錯題要連續答對 ${MASTER} 次才離開，中途答錯就重算`, () => {
+  const p = empty();
+  record(p, 'a', false);
+  for (let i = 1; i < MASTER; i++){ record(p, 'a', true); assert.ok(isWrong(p.answers.a), `答對 ${i} 次還在`); }
+  record(p, 'a', false);
+  for (let i = 1; i < MASTER; i++) record(p, 'a', true);
+  assert.ok(isWrong(p.answers.a));
+  record(p, 'a', true);
+  assert.ok(!isWrong(p.answers.a));
+  assert.ok(isMastered(p.answers.a));
 });
 
-test('deckKey 區分題型、課程、順序', () => {
-  assert.notEqual(deckKey('true-false', 1, 'random'), deckKey('true-false', 1, 'number'));
-  assert.notEqual(deckKey('true-false', 1, 'random'), deckKey('multiple-choice', 1, 'random'));
+test('舊版紀錄（沒有連續答對次數）照答對答錯換算', () => {
+  assert.equal(streak({ c: 4, w: 0, r: 1 }), 4);
+  assert.equal(streak({ c: 4, w: 1, r: 1 }), 1);
+  assert.equal(streak({ c: 4, w: 1, r: 0 }), 0);
+  assert.ok(isWrong({ c: 4, w: 1, r: 1 }));
+  const p = empty(); p.answers.a = { c: 2, w: 0, r: 1 };
+  record(p, 'a', true);
+  assert.deepEqual(p.answers.a, { c: 3, w: 0, r: 1, s: 3 });
+});
+
+test('加權抽題：錯題出現次數遠多於熟練題，沒作答的介於中間', () => {
+  const ids = ['wrong', 'new', 'master'];
+  const answers = { wrong: { c: 0, w: 1, r: 0, s: 0 }, master: { c: 5, w: 0, r: 1, s: 5 } };
+  const n = { wrong: 0, new: 0, master: 0 }, rnd = mulberry32(1);
+  for (let i = 0; i < 30000; i++) n[pick(ids, answers, [], rnd)]++;
+  assert.ok(n.wrong > n.new * 1.6 && n.new > n.master * 10, JSON.stringify(n));
+});
+
+test(`剛出過的 ${COOLDOWN} 題不重複，範圍太小時放寬`, () => {
+  const ids = Array.from({ length: 8 }, (_, i) => `q${i}`), rnd = mulberry32(3);
+  const recent = [];
+  for (let i = 0; i < 2000; i++){
+    const id = pick(ids, {}, recent, rnd);
+    assert.ok(!recent.slice(-COOLDOWN).includes(id), `第 ${i} 次抽到剛出過的 ${id}`);
+    recent.push(id);
+  }
+  assert.equal(pick(['only'], {}, ['only'], rnd), 'only');
+  assert.equal(pick([], {}, [], rnd), null);
+});
+
+test('deckKey 區分題型、課程、出題範圍', () => {
+  assert.notEqual(deckKey('true-false', 1, 'all'), deckKey('true-false', 1, 'wrong'));
+  assert.notEqual(deckKey('true-false', 1, 'all'), deckKey('multiple-choice', 1, 'all'));
 });
 
 function memStorage(){
@@ -48,11 +83,10 @@ function memStorage(){
 test('紀錄存得進去也讀得回來', () => {
   const s = memStorage(), p = empty();
   record(p, 'tf-01-0001', true); record(p, 'tf-01-0001', false); record(p, 'tf-01-0002', true);
-  p.decks['k'] = { seed: 5, pos: 3 };
   assert.equal(save(p, s), true);
   const q = load(s);
-  assert.deepEqual(q.answers['tf-01-0001'], { c: 1, w: 1, r: 0 });
-  assert.deepEqual(q.decks['k'], { seed: 5, pos: 3 });
+  assert.deepEqual(q.answers['tf-01-0001'], { c: 1, w: 1, r: 0, s: 0 });
+  assert.deepEqual(q.answers['tf-01-0002'], { c: 1, w: 0, r: 1, s: 1 });
 });
 
 test('儲存空間壞掉或被封鎖時不擲例外，回空紀錄', () => {
@@ -63,12 +97,19 @@ test('儲存空間壞掉或被封鎖時不擲例外，回空紀錄', () => {
   assert.deepEqual(load(junk), empty());
 });
 
-test('課程統計只算該課程，最近一次答對才算對', () => {
+test('舊版紀錄裡「一輪」的位置讀進來就丟掉，作答紀錄保留', () => {
+  const s = memStorage();
+  s.setItem('pqz:progress:v1', JSON.stringify({ v: 1, answers: { a: { c: 1, w: 0, r: 1 } }, decks: { k: { seed: 5, pos: 3 } } }));
+  assert.deepEqual(load(s), { v: 1, answers: { a: { c: 1, w: 0, r: 1 } } });
+});
+
+test('課程統計只算該課程：熟練＝連續答對 3 次，錯題＝錯過還沒連續答對 3 次', () => {
   const qs = [{ id: 'a', course: 1 }, { id: 'b', course: 1 }, { id: 'c', course: 2 }];
   const p = empty();
-  record(p, 'a', true); record(p, 'b', true); record(p, 'b', false); record(p, 'c', true);
-  assert.deepEqual(stats(p, qs, 1), { total: 2, done: 2, right: 1 });
-  assert.deepEqual(stats(p, qs, 0), { total: 3, done: 3, right: 2 });
+  for (let i = 0; i < 3; i++) record(p, 'a', true);
+  record(p, 'b', true); record(p, 'b', false); record(p, 'c', true);
+  assert.deepEqual(stats(p, qs, 1), { total: 2, done: 2, mastered: 1, wrong: 1 });
+  assert.deepEqual(stats(p, qs, 0), { total: 3, done: 3, mastered: 1, wrong: 1 });
 });
 
 test('首頁的課程清單（建置時產生）與題庫一致：題數、題號前綴', () => {
