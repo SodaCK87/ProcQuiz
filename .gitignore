@@ -1,9 +1,18 @@
-# Office 開檔時的暫存鎖定檔
+# 每一行對應 docs/檔案結構規範.md〈不進版控〉的一列
+
+# Office 開檔時的鎖定檔
 ~$*
+
+# 本機暫存
+tmp/
 
 # Python
 __pycache__/
+.pytest_cache/
 .venv/
 
 # Node
 node_modules/
+
+# 網站建置產出（npm run build 可重建）
+web/dist/
