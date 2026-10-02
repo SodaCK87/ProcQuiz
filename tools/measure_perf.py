@@ -3,7 +3,7 @@
 用法：python tools/measure_perf.py                      全部段，warmup 1 次＋正式 5 次
       python tools/measure_perf.py --runs 1 --warmup 0  只確認腳本能跑，數字不當基準
       python tools/measure_perf.py --only convert,web   只量指定段
-      python tools/measure_perf.py --json 路徑          另存原始取樣（建議放 tmp/）
+      python tools/measure_perf.py --json 路徑          另存原始取樣（建議放 %TEMP%）
 
 段：baseline 空跑底線｜convert 轉檔核對｜unittest｜npmtest｜build 建置與產出大小｜web 網站純邏輯（在 Node 上量）。
 結果與方法記在 docs/perf-baseline.md；改了熱點後用同一支、同一組參數重量，量法不改，新進入點只加新段。

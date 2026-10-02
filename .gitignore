@@ -3,9 +3,6 @@
 # Office 開檔時的鎖定檔
 ~$*
 
-# 本機暫存
-tmp/
-
 # Python
 __pycache__/
 .pytest_cache/
