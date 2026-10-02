@@ -51,9 +51,15 @@
   /* 面＝暗金框；旋轉的錐形漸層當流光，紙張壓在上面只露出 4px 邊 */
   .face{
     position:absolute;inset:0;border-radius:18px;overflow:hidden;background:var(--gold-deep);
-    backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.6);
+    box-shadow:0 0 0 1px rgba(0,0,0,.6);
+    /* 兩面都不剔除背面、前後錯開 1px，靠 3D 深度決定誰在上面。被剔除的那面手機不會事先畫，
+       翻到 90° 才第一次畫整面（紙紋＋整段解析的新字形），會頓一下 */
+    transform:translateZ(1px);will-change:transform
   }
-  .back{transform:rotateY(180deg)}
+  .back{transform:rotateY(180deg) translateZ(1px)}
+  /* 網址加 ?flip=old 可切回舊做法（背面剔除），手機上比較兩者用 */
+  :global(.cull) .face{backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:none}
+  :global(.cull) .back{transform:rotateY(180deg)}
   .face::before{
     content:"";position:absolute;inset:-50%;
     background:conic-gradient(from 0deg,

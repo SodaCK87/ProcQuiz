@@ -32,8 +32,18 @@
   $effect(() => {
     const k = kind;
     if (banks[k]) return;
-    LOADERS[k]().then(m => { banks = { ...banks, [k]: m.default }; }, () => { loadError = '題庫載入失敗，請檢查網路後重新整理。'; });
+    LOADERS[k]().then(m => { banks = { ...banks, [k]: m.default }; loadFonts(); }, () => { loadError = '題庫載入失敗，請檢查網路後重新整理。'; });
   });
+
+  // 思源宋體等題庫到了才開始下載：慢網路下字型切片（首頁就要 16 塊、約 700 KB）會跟題庫搶頻寬；
+  // 在那之前先用系統內建的明體
+  let fontsRequested = false;
+  function loadFonts(){
+    if (fontsRequested) return;
+    fontsRequested = true;
+    import('@fontsource/noto-serif-tc/400.css');
+    import('@fontsource/noto-serif-tc/700.css');
+  }
 
   function persist(){ save(progress); rev++; }
 

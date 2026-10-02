@@ -16,7 +16,8 @@
 
   /* ---------- 光影翻轉（定案樣式）：所有狀態在 S，一條 rAF 迴圈逐格算 ---------- */
   const S = { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, prevDiff: 0, onLand: null };
-  let shades = [], sheens = [], bars = [], running = false, last = 0;
+  let shades = [], sheens = [], bars = [], running = false, last = 0, shownFront = null;
+  const cull = new URLSearchParams(location.search).get('flip') === 'old';
 
   function render(){
     if (!card) return;
@@ -25,10 +26,13 @@
     card.style.transform = `translateZ(${lift}px) rotateY(${S.theta}deg)`;
     // 背面靠 backface-visibility 藏起來，但保持可見好讓它事先畫好；翻到中途才第一次畫背面，手機上會卡一下
     const frontOn = cos > 0;
-    front.style.pointerEvents = frontOn ? '' : 'none';
-    back.style.pointerEvents = frontOn ? 'none' : '';
-    front.setAttribute('aria-hidden', String(!frontOn));
-    back.setAttribute('aria-hidden', String(frontOn));
+    if (frontOn !== shownFront){
+      shownFront = frontOn;
+      front.style.pointerEvents = frontOn ? '' : 'none';
+      back.style.pointerEvents = frontOn ? 'none' : '';
+      front.setAttribute('aria-hidden', String(!frontOn));
+      back.setAttribute('aria-hidden', String(frontOn));
+    }
     const narrow = .3 + .7 * Math.abs(cos);
     floor.style.transform = `translateY(${lift * .3}px) scale(${narrow * (1 + side * .25)}, ${1 + side * .6})`;
     floor.style.opacity = String(1 - side * .55);
@@ -116,7 +120,7 @@
 <div class="slot" bind:this={slot}>
   <div class="aura" bind:this={aura}></div>
   <div class="floor" bind:this={floor}></div>
-  <div class="card" bind:this={card}>
+  <div class="card" class:cull bind:this={card}>
     <CardFace side="front" footHidden={!revealed}>
       <div class="inner">
         <div class="meta">{kindLabel}・{courseName}・第 {question.no} 題</div>
