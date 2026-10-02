@@ -9,7 +9,7 @@
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
 測試：`python -m unittest discover -s tests` 24 條全綠（2026-10-02，本機 Python 3.11.9，需 openpyxl、pypdf）；
-網站邏輯 `npm test`（在 `web/`）10 條全綠（Node 24）。
+網站邏輯 `npm test`（在 `web/`）17 條全綠（Node 24）。
 
 ## 網站
 
@@ -17,7 +17,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
 2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 會跑測試、建置並發布到 GitHub Pages，測試沒過就不發布。
-3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
+3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單、背景星圖的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
 

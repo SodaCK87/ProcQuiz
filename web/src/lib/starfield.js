@@ -52,7 +52,8 @@ function init(){
 }
 
 function size(){
-  DPR = Math.min(1.5, devicePixelRatio || 1);  // 光點本來就是柔邊，畫布解析度不必跟到 3 倍 W = innerWidth; H = innerHeight;
+  DPR = Math.min(1.5, devicePixelRatio || 1);  // 光點本來就是柔邊，畫布解析度不必跟到 3 倍
+  W = innerWidth; H = innerHeight;
   cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (W && H) init();
 }
