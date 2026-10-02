@@ -16,3 +16,6 @@ node_modules/
 
 # 網站建置產出（npm run build 可重建）
 web/dist/
+
+# 本機預覽用的開發伺服器設定，port 依各機器狀況調整
+.claude/launch.json
