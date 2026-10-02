@@ -17,7 +17,6 @@
   /* ---------- 光影翻轉（定案樣式）：所有狀態在 S，一條 rAF 迴圈逐格算 ---------- */
   const S = { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, prevDiff: 0, onLand: null };
   let shades = [], sheens = [], bars = [], running = false, last = 0, shownFront = null;
-  const cull = new URLSearchParams(location.search).get('flip') === 'old';
 
   function render(){
     if (!card) return;
@@ -120,7 +119,7 @@
 <div class="slot" bind:this={slot}>
   <div class="aura" bind:this={aura}></div>
   <div class="floor" bind:this={floor}></div>
-  <div class="card" class:cull bind:this={card}>
+  <div class="card" bind:this={card}>
     <CardFace side="front" footHidden={!revealed}>
       <div class="inner">
         <div class="meta">{kindLabel}・{courseName}・第 {question.no} 題</div>
