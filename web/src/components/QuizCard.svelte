@@ -1,0 +1,198 @@
+<script>
+  import { onMount, onDestroy, tick } from 'svelte';
+  import CardFace from './CardFace.svelte';
+  import { burst, setAvoid } from '../lib/starfield.js';
+
+  /** onresult(ok) 作答當下呼叫；onnext() 換下一題（由外層改 question） */
+  let { question, kindLabel, courseName, onresult, onnext } = $props();
+
+  const NOTE_TITLE = { replace: '審查說明', correct: '出處更正', law: '法條更正', answer: '答案註記' };
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let slot, card, floor, aura, front, back;
+  let answered = $state(false), chosen = $state(null), revealed = $state(false), busy = false;
+  let isOk = $derived(answered && String(chosen) === String(question.answer));
+  let choices = $derived(question.options ? question.options.map((t, k) => [k + 1, t]) : [['O', null], ['X', null]]);
+
+  /* ---------- 光影翻轉（定案樣式）：所有狀態在 S，一條 rAF 迴圈逐格算 ---------- */
+  const S = { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, prevDiff: 0, onLand: null };
+  let shades = [], sheens = [], bars = [], running = false, last = 0;
+
+  function render(){
+    if (!card) return;
+    const rad = S.theta * Math.PI / 180, side = Math.abs(Math.sin(rad)), cos = Math.cos(rad);
+    const lift = 56 * side;
+    card.style.transform = `translateZ(${lift}px) rotateY(${S.theta}deg)`;
+    // 不單靠 backface-visibility：背對的那面直接隱藏，也順便讓它點不到
+    const frontOn = cos > 0;
+    front.style.visibility = frontOn ? 'visible' : 'hidden';
+    back.style.visibility = frontOn ? 'hidden' : 'visible';
+    front.setAttribute('aria-hidden', String(!frontOn));
+    back.setAttribute('aria-hidden', String(frontOn));
+    const narrow = .3 + .7 * Math.abs(cos);
+    floor.style.transform = `translateY(${lift * .3}px) scale(${narrow * (1 + side * .25)}, ${1 + side * .6})`;
+    floor.style.opacity = String(1 - side * .55);
+    aura.style.transform = `scaleX(${narrow})`;
+    const u = (((S.theta % 180) + 180) % 180) / 180;
+    shades.forEach(s => s.style.opacity = String(.5 * side));
+    sheens.forEach(s => s.style.opacity = String(Math.min(1, side * 1.8)));
+    bars.forEach(b => b.style.transform = `translateX(${u * 270}%)`);
+  }
+
+  function step(dt){
+    if (S.mode !== 'spring') return;
+    // 反應時間 0.75 s、阻尼 0.75（約 25% 回彈），與試驗頁選定的參數相同
+    const T = .75, zeta = .75, k = (2 * Math.PI / T) ** 2, c = 4 * Math.PI * zeta / T, h = 1 / 480;
+    for (let n = Math.ceil(dt / h); n > 0; n--){ const a = -k * (S.theta - S.target) - c * S.vel; S.vel += a * h; S.theta += S.vel * h; }
+    const diff = S.theta - S.target;
+    if (!S.landed && (Math.sign(diff) !== Math.sign(S.prevDiff) || Math.abs(diff) < 1)){ S.landed = true; land(); }
+    S.prevDiff = diff;
+    if (Math.abs(diff) < .05 && Math.abs(S.vel) < 1){ S.theta = S.target; S.vel = 0; S.mode = 'idle'; }
+  }
+
+  function tickFrame(now){
+    const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
+    step(dt); render();
+    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else running = false;
+  }
+
+  function flipTo(target, onLand){
+    S.onLand = onLand || null;
+    if (reduced){ S.theta = target; render(); land(); return; }
+    S.mode = 'spring'; S.target = target; S.landed = false; S.prevDiff = S.theta - target;
+    if (!running){ running = true; last = performance.now(); requestAnimationFrame(tickFrame); }
+  }
+
+  function land(){
+    const f = S.onLand; S.onLand = null;
+    const r = card.getBoundingClientRect();
+    burst(r.left + 4, r.top + r.height * .5, 10); burst(r.right - 4, r.top + r.height * .5, 10);
+    if (f) f();
+  }
+
+  function answer(val){
+    if (answered || busy) return;
+    chosen = val; answered = true;
+    onresult(String(val) === String(question.answer));
+    flipTo(S.theta + 180, () => {
+      revealed = true;
+      const seal = back.querySelector('.seal');
+      if (seal && !reduced) seal.animate([{ transform: 'rotate(-8deg) scale(1.9)', opacity: 0 }, { transform: 'rotate(-8deg) scale(1)', opacity: 1 }],
+        { duration: 280, easing: 'cubic-bezier(.3,1.5,.5,1)' });
+    });
+  }
+
+  const peek = () => { if (!busy) flipTo(Math.round(S.theta / 180) * 180 - 180); };
+  const show = () => { if (!busy) flipTo(Math.round(S.theta / 180) * 180 + 180); };
+
+  async function next(){
+    if (busy) return;
+    busy = true;
+    const out = reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: 'none', opacity: 1 }, { transform: 'translateX(-110%) rotate(-7deg)', opacity: 0 }];
+    const inn = reduced ? [{ opacity: 0 }, { opacity: 1 }] : [{ transform: 'translateY(28px) scale(.95)', opacity: 0 }, { transform: 'none', opacity: 1 }];
+    await slot.animate(out, { duration: 300, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' }).finished;
+    await onnext();
+    await tick();
+    if (!slot) return;  // 最後一題：外層已換成完成畫面，這張卡已卸載
+    answered = false; chosen = null; revealed = false;
+    Object.assign(S, { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, onLand: null });
+    await tick();
+    render();
+    for (const b of slot.querySelectorAll('.body')) b.scrollTop = 0;
+    await slot.animate(inn, { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' }).finished;
+    slot.getAnimations().forEach(a => a.cancel());
+    busy = false;
+  }
+
+  onMount(() => {
+    front = card.querySelector('.front'); back = card.querySelector('.back');
+    shades = [...card.querySelectorAll('.shade')]; sheens = [...card.querySelectorAll('.sheen')]; bars = [...card.querySelectorAll('.sheen b')];
+    render();
+    setAvoid(() => slot && slot.getBoundingClientRect());
+  });
+  onDestroy(() => setAvoid(null));
+</script>
+
+<div class="slot" bind:this={slot}>
+  <div class="aura" bind:this={aura}></div>
+  <div class="floor" bind:this={floor}></div>
+  <div class="card" bind:this={card}>
+    <CardFace side="front" footHidden={!revealed}>
+      <div class="inner">
+        <div class="meta">{kindLabel}・{courseName}・第 {question.no} 題</div>
+        <p class="stem">{question.stem}</p>
+        <div class={question.options ? 'mc' : 'tf'}>
+          {#each choices as [val, text]}
+            <button class="btn"
+              class:chosen={chosen === val}
+              class:is-ans={revealed && String(val) === String(question.answer)}
+              class:is-wrong={revealed && chosen === val && String(val) !== String(question.answer)}
+              disabled={answered}
+              onclick={() => answer(val)}>
+              {#if text}<span class="no">{val}</span><span>{text}</span>{:else}{val}{/if}
+            </button>
+          {/each}
+        </div>
+      </div>
+      {#snippet foot()}<button class="btn primary" onclick={show}>看答案</button>{/snippet}
+    </CardFace>
+    <CardFace side="back">
+      {#if answered}
+        <div class="verdict" class:ok={isOk} class:bad={!isOk}>
+          <div class="seal">{isOk ? '正' : '誤'}</div>
+          <div><strong>{isOk ? '答對了' : '答錯了'}</strong><span>正解 {question.answer}｜你選 {chosen}</span></div>
+        </div>
+        {#if question.options}<p>正解：({question.answer}) {question.options[question.answer - 1]}</p>{/if}
+        {#if question.law}<h3>法條</h3><p>政府採購法{question.law}</p>{/if}
+        {#if question.explanation}<h3>解析</h3><p>{question.explanation}</p>{/if}
+        {#each question.notes as n}<h3>{NOTE_TITLE[n.type] ?? '註記'}</h3><p>{n.text}</p>{/each}
+        {#if !question.explanation && !question.notes.length}<p class="none">這題目前沒有解析。</p>{/if}
+      {/if}
+      {#snippet foot()}
+        <button class="btn" onclick={peek}>看題目</button>
+        <button class="btn primary" onclick={next}>下一題</button>
+      {/snippet}
+    </CardFace>
+  </div>
+</div>
+
+<style>
+  .slot{position:relative;height:min(64vh,560px);perspective:1100px;margin:0 6px 30px}
+  .aura{position:absolute;inset:0;border-radius:18px;pointer-events:none;
+    box-shadow:0 0 40px 6px rgba(240,212,138,.24);animation:aura 4.5s ease-in-out infinite}
+  @keyframes aura{0%,100%{opacity:.45}50%{opacity:1}}
+  .floor{position:absolute;left:8%;right:8%;bottom:-20px;height:32px;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,.7),transparent 70%)}
+  /* 3D 容器不得帶 overflow／opacity／filter，否則會被壓平（MDN transform-style） */
+  .card{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+
+  /* 題目短時置中；內容超出時 auto 邊距歸零，不會被裁掉頂端 */
+  .inner{margin:auto 0}
+  .meta{font-size:12px;color:var(--ink-2);letter-spacing:.06em;margin-bottom:10px;text-align:center}
+  .meta::after{content:"";display:block;height:1px;margin:8px auto 0;width:60%;
+    background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+  .stem{font-size:18px;margin:0 0 18px;line-height:1.75}
+  .tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tf .btn{font-size:30px;font-weight:700;padding:14px 0;line-height:1.2}
+  .mc{display:grid;gap:9px}
+  .mc .btn{text-align:left;display:flex;gap:10px;align-items:flex-start;line-height:1.6}
+  .mc .no{font-weight:700;color:var(--gold-text);min-width:1.1em}
+  .btn.chosen{outline:2px solid var(--gold-hi);outline-offset:2px}
+  .btn.is-ans{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+  .btn.is-wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+
+  .verdict{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+  .seal{flex:none;width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
+    font-size:30px;font-weight:700;transform:rotate(-8deg);border:3px double currentColor}
+  .verdict.ok .seal{color:var(--ok);background:var(--ok-bg)}
+  .verdict.bad .seal{color:var(--bad);background:var(--bad-bg)}
+  .verdict strong{display:block;font-size:20px}
+  .verdict.ok strong{color:var(--ok)}
+  .verdict.bad strong{color:var(--bad)}
+  .verdict span{font-size:14px;color:var(--ink-2)}
+  h3{display:flex;align-items:center;gap:8px;font-size:14px;letter-spacing:.2em;margin:16px 0 4px;color:var(--gold-text)}
+  h3::before,h3::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+  h3::after{background:linear-gradient(90deg,var(--gold),transparent)}
+  p{margin:0;white-space:pre-line}
+  .none{color:var(--ink-2);margin-top:14px}
+</style>
