@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildDeck, shuffled, deckKey } from './deck.js';
-import { empty, load, save, record, stats } from './progress.js';
+import { empty, load, save, record, stats, statsByPrefix } from './progress.js';
+import { buildIndex } from './bank-index.js';
 
 const bank = kind => JSON.parse(readFileSync(new URL(`../../../data/questions/${kind}.json`, import.meta.url), 'utf8'));
 
@@ -68,4 +69,29 @@ test('課程統計只算該課程，最近一次答對才算對', () => {
   record(p, 'a', true); record(p, 'b', true); record(p, 'b', false); record(p, 'c', true);
   assert.deepEqual(stats(p, qs, 1), { total: 2, done: 2, right: 1 });
   assert.deepEqual(stats(p, qs, 0), { total: 3, done: 3, right: 2 });
+});
+
+test('首頁的課程清單（建置時產生）與題庫一致：題數、題號前綴', () => {
+  const banks = { 'true-false': bank('true-false'), 'multiple-choice': bank('multiple-choice') };
+  const idx = buildIndex(banks);
+  for (const [kind, d] of Object.entries(banks)){
+    assert.equal(idx[kind].total, d.questions.length);
+    assert.equal(idx[kind].generated, d.generated);
+    for (const c of idx[kind].courses){
+      const ids = d.questions.filter(q => q.course === c.id).map(q => q.id);
+      assert.equal(ids.length, c.count, `${kind} 課程 ${c.id}`);
+      assert.ok(ids.every(id => id.startsWith(c.prefix)), `${kind} 課程 ${c.id} 前綴 ${c.prefix}`);
+      assert.equal(d.questions.filter(q => q.id.startsWith(c.prefix)).length, c.count, `前綴 ${c.prefix} 不可涵蓋別的課程`);
+    }
+    assert.ok(d.questions.every(q => q.id.startsWith(idx[kind].prefix)));
+  }
+});
+
+test('首頁用題號前綴算的進度，與用整份題庫算的相同', () => {
+  for (const kind of ['true-false', 'multiple-choice']){
+    const d = bank(kind), idx = buildIndex({ [kind]: d })[kind], p = empty();
+    d.questions.forEach((q, i) => { if (i % 3 === 0) record(p, q.id, i % 2 === 0); });
+    assert.deepEqual(statsByPrefix(p, idx.prefix, idx.total), stats(p, d.questions, 0));
+    for (const c of idx.courses) assert.deepEqual(statsByPrefix(p, c.prefix, c.count), stats(p, d.questions, c.id), `${kind} 課程 ${c.id}`);
+  }
 });

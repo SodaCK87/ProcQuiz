@@ -6,6 +6,7 @@
   import { bakeTextures } from './lib/textures.js';
   import { load, save, record, stats } from './lib/progress.js';
   import { buildDeck, deckKey, newSeed } from './lib/deck.js';
+  import INDEX from 'virtual:bank-index';
 
   // 題庫在 repo 的 data/questions/，由 tools/convert.py 產生；動態載入，選到那個題型才下載
   const LOADERS = {
@@ -21,19 +22,23 @@
   let kind = $state('true-false'), course = $state(0), order = $state('random');
   let deck = $state.raw(null);     // { key, ids, pos }
   let loadError = $state('');
+  let starting = $state(false);    // 按了開始，題庫還在下載
   const inLine = /\bLine\//.test(navigator.userAgent);
 
   let bank = $derived(banks[kind] ?? null);
   let byId = $derived(bank ? new Map(bank.questions.map(q => [q.id, q])) : new Map());
   let question = $derived(deck && view === 'quiz' ? byId.get(deck.ids[deck.pos]) : null);
   let courseName = $derived(bank && question ? bank.courses.find(c => c.id === question.course)?.name ?? '' : '');
-  let generated = $derived(Object.values(banks)[0]?.generated ?? '');
+  const generated = INDEX['true-false'].generated;
 
-  $effect(() => {
-    const k = kind;
-    if (banks[k]) return;
-    LOADERS[k]().then(m => { banks = { ...banks, [k]: m.default }; loadFonts(); }, () => { loadError = '題庫載入失敗，請檢查網路後重新整理。'; });
-  });
+  // 每個題型只下載一次；首頁一出現就在背景開始抓目前的題型
+  const pending = {};
+  function ensure(k){
+    pending[k] ??= LOADERS[k]().then(m => { banks = { ...banks, [k]: m.default }; loadFonts(); },
+      () => { delete pending[k]; loadError = '題庫下載失敗，請檢查網路後再按一次開始。'; throw new Error('load'); });
+    return pending[k];
+  }
+  $effect(() => { ensure(kind).catch(() => {}); });
 
   // 思源宋體等題庫到了才開始下載：慢網路下字型切片（首頁就要 16 塊、約 700 KB）會跟題庫搶頻寬；
   // 在那之前先用系統內建的明體
@@ -47,11 +52,17 @@
 
   function persist(){ save(progress); rev++; }
 
-  function begin(resume){
-    const key = deckKey(kind, course, order);
+  async function begin(resume){
+    const k = kind;  // 等下載時題型可能被切換，以按下當時的為準
+    if (!banks[k]){
+      starting = true; loadError = '';
+      try { await ensure(k); } catch { return; } finally { starting = false; }
+      if (k !== kind) return;
+    }
+    const key = deckKey(k, course, order);
     let st = progress.decks[key];
     if (!resume || !st) st = progress.decks[key] = { seed: newSeed(), pos: 0 };
-    const ids = buildDeck(bank.questions, course, order, st.seed);
+    const ids = buildDeck(banks[k].questions, course, order, st.seed);
     if (st.pos >= ids.length) st.pos = 0;
     deck = { key, ids, pos: st.pos };
     persist();
@@ -92,7 +103,7 @@
   {#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
 
   {#if view === 'start'}
-    <StartScreen bind:kind bind:course bind:order {bank} {progress} {rev} onstart={begin} />
+    <StartScreen bind:kind bind:course bind:order index={INDEX[kind]} {progress} {rev} {starting} onstart={begin} />
   {:else if view === 'quiz' && question}
     <nav class="bar">
       <button class="back" onclick={() => view = 'start'}>‹ 選題</button>
@@ -113,7 +124,7 @@
     </section>
   {/if}
 
-  <footer>非官方練習站｜題庫版本 {generated || '—'}｜解析為第三方整理，部分經人工審查加註｜紀錄只存在這台裝置</footer>
+  <footer>非官方練習站｜題庫版本 {generated}｜解析為第三方整理，部分經人工審查加註｜紀錄只存在這台裝置</footer>
 </div>
 
 <style>

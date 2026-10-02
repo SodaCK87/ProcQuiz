@@ -1,24 +1,23 @@
 <script>
-  import { stats } from '../lib/progress.js';
-  import { buildDeck, deckKey } from '../lib/deck.js';
+  import { statsByPrefix } from '../lib/progress.js';
+  import { deckKey } from '../lib/deck.js';
 
-  /** bank 為目前題型的題庫（載入中為 null）；rev 變動時重算進度 */
-  let { kind = $bindable(), course = $bindable(), order = $bindable(), bank, progress, rev, onstart } = $props();
+  /** index 為目前題型的課程清單（建置時產生，不必等題庫）；starting 為按下開始後還在等題庫下載；rev 變動時重算進度 */
+  let { kind = $bindable(), course = $bindable(), order = $bindable(), index, progress, rev, starting, onstart } = $props();
 
   const KINDS = [['true-false', '是非題'], ['multiple-choice', '選擇題']];
   const ORDERS = [['random', '隨機'], ['number', '依題號']];
 
   let rows = $derived.by(() => {
     rev;
-    if (!bank) return [];
-    return [{ id: 0, name: '全部課程' }, ...bank.courses].map(c => ({ ...c, ...stats(progress, bank.questions, c.id) }));
+    return [{ id: 0, name: '全部課程', count: index.total, prefix: index.prefix }, ...index.courses]
+      .map(c => ({ ...c, ...statsByPrefix(progress, c.prefix, c.count) }));
   });
   let saved = $derived.by(() => {
     rev;
-    if (!bank) return null;
     const st = progress.decks[deckKey(kind, course, order)];
     if (!st || !st.pos) return null;
-    const total = buildDeck(bank.questions, course, order, st.seed).length;
+    const total = course ? index.courses.find(c => c.id === course)?.count ?? 0 : index.total;
     return st.pos < total ? { pos: st.pos, total } : null;
   });
 </script>
@@ -41,10 +40,7 @@
     </div>
   </div>
 
-  <div class="courses" aria-busy={!bank}>
-    {#if !bank}
-      <p class="loading">題庫載入中…</p>
-    {:else}
+  <div class="courses">
       {#each rows as r (r.id)}
         <button class="course" aria-pressed={course === r.id} onclick={() => course = r.id}>
           <span class="name">{r.id ? `${r.id}. ` : ''}{r.name}</span>
@@ -53,15 +49,16 @@
           <span class="sub">{r.done ? `已練 ${r.done}・最近答對 ${r.right}` : '還沒練過'}</span>
         </button>
       {/each}
-    {/if}
   </div>
 
   <div class="go">
-    {#if saved}
-      <button class="btn primary" disabled={!bank} onclick={() => onstart(true)}>繼續（第 {saved.pos + 1}／{saved.total} 題）</button>
-      <button class="btn" disabled={!bank} onclick={() => onstart(false)}>重新開始</button>
+    {#if starting}
+      <button class="btn primary" disabled>題庫下載中…</button>
+    {:else if saved}
+      <button class="btn primary" onclick={() => onstart(true)}>繼續（第 {saved.pos + 1}／{saved.total} 題）</button>
+      <button class="btn" onclick={() => onstart(false)}>重新開始</button>
     {:else}
-      <button class="btn primary" disabled={!bank} onclick={() => onstart(false)}>開始練習</button>
+      <button class="btn primary" onclick={() => onstart(false)}>開始練習</button>
     {/if}
   </div>
 </section>
@@ -74,7 +71,6 @@
   .seg button{flex:1;padding:6px 10px;border:0;cursor:pointer;background:rgba(20,14,8,.6);color:var(--page-ink-2);font-size:15px}
   .seg button[aria-pressed="true"]{background:linear-gradient(180deg,#b8913f,#8f6c2a);color:#1a1208;font-weight:700}
   .courses{display:grid;gap:8px}
-  .loading{text-align:center;color:var(--page-ink-2);margin:24px 0}
   .course{
     display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;cursor:pointer;
     padding:10px 14px;border-radius:12px;color:var(--page-ink);

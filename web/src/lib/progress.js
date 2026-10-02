@@ -25,6 +25,17 @@ export function record(p, id, ok){
   a.r = ok ? 1 : 0;
 }
 
+/** 不必載入題庫的版本：題號前綴（如 tf-02-）相同就屬同一課程，首頁用這個 */
+export function statsByPrefix(p, prefix, total){
+  let done = 0, right = 0;
+  for (const id in p.answers){
+    if (!id.startsWith(prefix)) continue;
+    done++;
+    if (p.answers[id].r === 1) right++;
+  }
+  return { total, done: Math.min(done, total), right: Math.min(right, total) };
+}
+
 /** 某課程（0＝全部）作答過幾題、最近一次答對幾題 */
 export function stats(p, questions, course){
   let total = 0, done = 0, right = 0;
