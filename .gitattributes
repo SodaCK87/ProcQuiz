@@ -1,0 +1,4 @@
+# 來源檔一律原樣保存：RTF 若被當文字轉換換行，取出後的位元組就與官方下載檔不同
+data/source/** binary
+# 轉檔產出固定 LF，與 convert.py 寫出的內容逐字相同
+data/questions/*.json text eol=lf
