@@ -27,15 +27,23 @@ export function save(p, storage = globalThis.localStorage){
 /** 連續答對次數；舊紀錄沒有 s：沒錯過就是答對次數，錯過就只知道最近一次 */
 export const streak = a => a.s ?? (a.w ? a.r : a.c);
 
-export const isWrong = a => !!a && a.w > 0 && streak(a) < MASTER;
+/** 錯題：答錯過或猜對過，且之後還沒連續答對 MASTER 次 */
+export const isWrong = a => !!a && (a.w > 0 || a.g > 0) && streak(a) < MASTER;
 export const isMastered = a => !!a && streak(a) >= MASTER;
 
-/** 記一次作答：c 答對次數、w 答錯次數、r 最近一次（1 對 0 錯）、s 連續答對次數 */
+/** 記一次作答：c 答對次數、w 答錯次數、r 最近一次（1 對 0 錯）、s 連續答對次數；g 猜對次數由 markGuess 補記 */
 export function record(p, id, ok){
   const a = p.answers[id] ?? (p.answers[id] = { c: 0, w: 0, r: 0, s: 0 });
   a.s = ok ? streak(a) + 1 : 0;
   if (ok) a.c++; else a.w++;
   a.r = ok ? 1 : 0;
+}
+
+/** 剛答對的那次其實是猜的：改記成猜對（g），連續答對歸零，之後照錯題出題 */
+export function markGuess(p, id){
+  const a = p.answers[id];
+  if (!a || a.r !== 1 || !a.c) return;
+  a.c--; a.g = (a.g ?? 0) + 1; a.s = 0;
 }
 
 function tally(list, total){

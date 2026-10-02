@@ -4,7 +4,7 @@
   import StartScreen from './components/StartScreen.svelte';
   import { start as startStars } from './lib/starfield.js';
   import { bakeTextures } from './lib/textures.js';
-  import { load, save, record, stats, MASTER } from './lib/progress.js';
+  import { load, save, record, markGuess, stats, isWrong, MASTER } from './lib/progress.js';
   import { pool, pick, deckKey } from './lib/deck.js';
   import INDEX from 'virtual:bank-index';
 
@@ -20,7 +20,7 @@
   let rev = $state(0);            // 紀錄是普通物件，改完遞增 rev 讓畫面重算
   let view = $state('start');
   let kind = $state('true-false'), course = $state(0), mode = $state('all');
-  let deck = $state.raw(null);     // { key, cur, recent }：目前這題與最近出過的題號
+  let deck = $state.raw(null);     // { key, cur, recent, mixed }：目前這題、最近出過的題號、是否為錯題模式穿插的題目
   let loadError = $state('');
   let starting = $state(false);    // 按了開始，題庫還在下載
   const inLine = /\bLine\//.test(navigator.userAgent);
@@ -59,21 +59,29 @@
       try { await ensure(k); } catch { return; } finally { starting = false; }
       if (k !== kind) return;
     }
-    const cur = pick(pool(banks[k].questions, course, mode, progress.answers), progress.answers, []);
-    if (!cur) return;
-    deck = { key: deckKey(k, course, mode), cur, recent: [] };
+    const next = draw(banks[k].questions, []);
+    if (!next) return;
+    deck = { key: deckKey(k, course, mode), ...next, recent: [] };
     view = 'quiz';
     scrollTo(0, 0);
   }
 
-  function onresult(ok){ record(progress, question.id, ok); persist(); }
-
   // 錯題模式下答對的題目可能已經離開錯題，所以每題都重抓範圍
+  function draw(questions, recent){
+    const ids = pool(questions, course, mode, progress.answers);
+    const filler = mode === 'wrong' ? pool(questions, course, 'all', progress.answers) : null;
+    const cur = pick(ids, progress.answers, recent, Math.random, filler);
+    return cur && { cur, mixed: mode === 'wrong' && !isWrong(progress.answers[cur]) };
+  }
+
+  function onresult(ok){ record(progress, question.id, ok); persist(); }
+  function onguess(){ markGuess(progress, question.id); persist(); }
+
   function onnext(){
     const recent = [...deck.recent, deck.cur].slice(-10);
-    const cur = pick(pool(bank.questions, course, mode, progress.answers), progress.answers, recent);
-    if (!cur) { view = 'done'; return; }
-    deck = { ...deck, cur, recent };
+    const next = draw(bank.questions, recent);
+    if (!next) { view = 'done'; return; }
+    deck = { ...deck, ...next, recent };
   }
 
   let rangeStats = $derived.by(() => { rev; return bank ? stats(progress, bank.questions, course) : null; });
@@ -101,10 +109,10 @@
   {:else if view === 'quiz' && question}
     <nav class="bar">
       <button class="back" onclick={() => view = 'start'}>‹ 選題</button>
-      {#if rangeStats}<span>{mode === 'wrong' ? `錯題剩 ${rangeStats.wrong} 題` : '全部'}・熟練 {rangeStats.mastered}／{rangeStats.total}</span>{/if}
+      {#if rangeStats}<span>{mode === 'wrong' ? `錯題剩 ${rangeStats.wrong} 題${deck.mixed ? '・穿插複習' : ''}` : '全部'}・熟練 {rangeStats.mastered}／{rangeStats.total}</span>{/if}
     </nav>
     {#key deck.key}
-      <QuizCard {question} kindLabel={bank.label} {courseName} {onresult} {onnext} />
+      <QuizCard {question} kindLabel={bank.label} {courseName} {onresult} {onguess} {onnext} />
     {/key}
   {:else if view === 'done'}
     <section class="done">

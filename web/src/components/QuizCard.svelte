@@ -3,14 +3,14 @@
   import CardFace from './CardFace.svelte';
   import { burst, setAvoid } from '../lib/starfield.js';
 
-  /** onresult(ok) 作答當下呼叫；onnext() 換下一題（由外層改 question） */
-  let { question, kindLabel, courseName, onresult, onnext } = $props();
+  /** onresult(ok) 作答當下呼叫；onguess() 答對後標記是猜的；onnext() 換下一題（由外層改 question） */
+  let { question, kindLabel, courseName, onresult, onguess, onnext } = $props();
 
   const NOTE_TITLE = { replace: '審查說明', correct: '出處更正', law: '法條更正', answer: '答案註記' };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let slot, card, floor, aura, front, back;
-  let answered = $state(false), chosen = $state(null), revealed = $state(false), busy = false;
+  let answered = $state(false), chosen = $state(null), revealed = $state(false), guessed = $state(false), busy = false;
   let isOk = $derived(answered && String(chosen) === String(question.answer));
   let choices = $derived(question.options ? question.options.map((t, k) => [k + 1, t]) : [['O', null], ['X', null]]);
 
@@ -97,7 +97,7 @@
     await onnext();
     await tick();
     if (!slot) return;  // 最後一題：外層已換成完成畫面，這張卡已卸載
-    answered = false; chosen = null; revealed = false;
+    answered = false; chosen = null; revealed = false; guessed = false;
     Object.assign(S, { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, onLand: null });
     await tick();
     render();
@@ -144,6 +144,9 @@
       <div class="verdict" class:ok={isOk} class:bad={!isOk}>
         <div class="seal">{isOk ? '正' : '誤'}</div>
         <div><strong>{isOk ? '答對了' : '答錯了'}</strong><span>正解 {question.answer}｜你選 {chosen ?? ''}</span></div>
+        {#if isOk}
+          <button class="btn guess" disabled={guessed} onclick={() => { guessed = true; onguess(); }}>{guessed ? '已記為沒把握' : '其實是猜的'}</button>
+        {/if}
       </div>
       {#if question.options}<p>正解：({question.answer}) {question.options[question.answer - 1]}</p>{/if}
       {#if question.law}<h3>法條</h3><p>政府採購法{question.law}</p>{/if}
@@ -183,7 +186,7 @@
   .btn.is-ans{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
   .btn.is-wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
 
-  .verdict{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+  .verdict{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:14px}
   .seal{flex:none;width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
     font-size:30px;font-weight:700;transform:rotate(-8deg);border:3px double currentColor}
   .verdict.ok .seal{color:var(--ok);background:var(--ok-bg)}
@@ -191,7 +194,8 @@
   .verdict strong{display:block;font-size:20px}
   .verdict.ok strong{color:var(--ok)}
   .verdict.bad strong{color:var(--bad)}
-  .verdict span{font-size:14px;color:var(--ink-2)}
+  .verdict span{font-size:14px;color:var(--ink-2);white-space:nowrap}
+  .guess{margin-left:auto;flex:none;padding:6px 10px;font-size:13px}
   h3{display:flex;align-items:center;gap:8px;font-size:14px;letter-spacing:.2em;margin:16px 0 4px;color:var(--gold-text)}
   h3::before,h3::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
   h3::after{background:linear-gradient(90deg,var(--gold),transparent)}

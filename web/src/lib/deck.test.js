@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { pool, pick, mulberry32, deckKey, COOLDOWN } from './deck.js';
-import { empty, load, save, record, stats, statsByPrefix, isWrong, isMastered, streak, MASTER } from './progress.js';
+import { empty, load, save, record, stats, statsByPrefix, isWrong, isMastered, streak, markGuess, MASTER } from './progress.js';
 import { buildIndex } from './bank-index.js';
 
 const bank = kind => JSON.parse(readFileSync(new URL(`../../../data/questions/${kind}.json`, import.meta.url), 'utf8'));
@@ -68,6 +68,34 @@ test(`剛出過的 ${COOLDOWN} 題不重複，範圍太小時放寬`, () => {
   }
   assert.equal(pick(['only'], {}, ['only'], rnd), 'only');
   assert.equal(pick([], {}, [], rnd), null);
+});
+
+test('猜對的題目不算連續答對，進錯題，之後要連續答對才離開', () => {
+  const p = empty();
+  record(p, 'a', true); record(p, 'a', true); record(p, 'a', true);
+  assert.ok(isMastered(p.answers.a));
+  markGuess(p, 'a');
+  assert.deepEqual(p.answers.a, { c: 2, w: 0, r: 1, s: 0, g: 1 });
+  assert.ok(isWrong(p.answers.a));
+  for (let i = 0; i < MASTER; i++) record(p, 'a', true);
+  assert.ok(!isWrong(p.answers.a));
+  record(p, 'b', false); markGuess(p, 'b');
+  assert.deepEqual(p.answers.b, { c: 0, w: 1, r: 0, s: 0 }, '答錯的不能再記成猜對');
+});
+
+test(`錯題少於 ${COOLDOWN + 1} 題時穿插別的題目，同一題至少隔 ${COOLDOWN} 題才再出`, () => {
+  const all = Array.from({ length: 30 }, (_, i) => `q${i}`), rnd = mulberry32(5);
+  for (const wrong of [['q0'], ['q0', 'q1', 'q2']]){
+    const recent = [];
+    let hits = 0;
+    for (let i = 0; i < 300; i++){
+      const id = pick(wrong, {}, recent, rnd, all);
+      assert.ok(!recent.slice(-COOLDOWN).includes(id), `第 ${i} 次抽到剛出過的 ${id}`);
+      if (wrong.includes(id)) hits++;
+      recent.push(id);
+    }
+    assert.ok(hits >= 300 * wrong.length / (COOLDOWN + wrong.length) - 1, `錯題出現 ${hits} 次，應該一冷卻完就回來`);
+  }
 });
 
 test('deckKey 區分題型、課程、出題範圍', () => {

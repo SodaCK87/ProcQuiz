@@ -26,12 +26,20 @@ export function pool(questions, course, mode, answers){
     .map(q => q.id);
 }
 
-/** 加權抽一題；recent 是最近出過的題號（舊到新），最後 COOLDOWN 題先不抽，題目不夠時放寬 */
-export function pick(ids, answers, recent, rnd = Math.random){
+/**
+ * 加權抽一題；recent 是最近出過的題號（舊到新），最後 COOLDOWN 題先不抽。
+ * ids 全在冷卻中時改從 filler 抽（錯題只剩幾題時穿插別的題目，免得同一題連出），都抽不到才放寬冷卻
+ */
+export function pick(ids, answers, recent, rnd = Math.random, filler = null){
   if (!ids.length) return null;
-  const k = Math.min(COOLDOWN, ids.length - 1);
-  const skip = new Set(k > 0 ? recent.slice(-k) : []);
-  const cand = ids.filter(id => !skip.has(id));
+  const skip = new Set(recent.slice(-COOLDOWN));
+  let cand = ids.filter(id => !skip.has(id));
+  if (!cand.length && filler) cand = filler.filter(id => !skip.has(id));
+  if (!cand.length){
+    const k = Math.min(COOLDOWN, ids.length - 1);
+    const near = new Set(k > 0 ? recent.slice(-k) : []);
+    cand = ids.filter(id => !near.has(id));
+  }
   const ws = cand.map(id => weight(answers[id]));
   let r = rnd() * ws.reduce((s, w) => s + w, 0);
   for (let i = 0; i < cand.length; i++){ r -= ws[i]; if (r < 0) return cand[i]; }
