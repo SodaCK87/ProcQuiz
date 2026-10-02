@@ -8,7 +8,7 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
-測試：`python -m unittest discover -s tests` 24 條全綠（2026-10-02，本機 Python 3.11.9；相依先裝 `pip install -r requirements.txt`）；
+測試：`python -m unittest discover -s tests` 28 條全綠（2026-10-02，本機 Python 3.11.9，中位數 37 秒；相依先裝 `pip install -r requirements.txt`）；
 網站邏輯 `npm test`（在 `web/`）17 條全綠（Node 24）。
 
 ## 網站

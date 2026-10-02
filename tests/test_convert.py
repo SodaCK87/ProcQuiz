@@ -3,6 +3,7 @@
 破壞型測試都做在暫存複本上，data/source/ 的原檔一個字都不碰。
 """
 import copy
+import hashlib
 import shutil
 import sys
 import tempfile
@@ -20,6 +21,21 @@ from xlsx_bank import BankError  # noqa: E402
 
 SRC = ROOT / "data" / "source"
 _built = None
+
+# PDF 抽字一次 6–7 秒，佔整套測試大半，而破壞型測試只改 RTF 與 xlsx。
+# 以檔案內容為鍵快取：PDF 一被改動就重抽，不會拿舊結果蓋過破壞
+_pdf_cache = {}
+_read_pdf = official.read_pdf_answers
+
+
+def _cached_pdf(path, course_names):
+    key = (hashlib.sha256(Path(path).read_bytes()).hexdigest(), frozenset(course_names))
+    if key not in _pdf_cache:
+        _pdf_cache[key] = _read_pdf(path, course_names)
+    return copy.deepcopy(_pdf_cache[key])
+
+
+official.read_pdf_answers = convert.read_pdf_answers = _cached_pdf
 
 
 def built():
@@ -173,6 +189,15 @@ class OfficialCrossCheck(unittest.TestCase):
         del pdf[("multiple-choice", "採購契約")][-1]
         with self.assertRaisesRegex(BankError, "採購契約"):
             official.cross_check(self.rtf, pdf)
+
+    def test_changed_pdf_is_not_served_from_cache(self):
+        # 守上面的 PDF 快取：同一組課程名、內容不同的 PDF 必須重抽（截斷的檔抽不出來就該擲例外）
+        names = {c for _, c in self.rtf}
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "official.pdf"
+            p.write_bytes((SRC / "official.pdf").read_bytes()[:4096])
+            with self.assertRaises(Exception):
+                official.read_pdf_answers(p, names)
 
 
 class Corruption(unittest.TestCase):

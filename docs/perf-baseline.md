@@ -199,3 +199,18 @@
    2. 同樣設定錄製：按開始練習，作答再按下一題，重複 3 次。看 Frames 列有沒有紅色或黃色的掉幀，Main 有沒有超過 50 ms 的長任務。
    3. 常駐動畫：停在首頁、卡片各 10 秒不動並錄製，記下 Summary 裡 Scripting＋Rendering＋Painting 佔總時間的比例，作為閒置 CPU 佔用。星空修好之後再錄一次比較。
    4. 實機：Android 手機開 USB 偵錯，桌機 `chrome://inspect` 連上後照 1–3 錄製；另外練 10 分鐘，看設定裡電池用量中瀏覽器的耗電與機身溫度。
+
+## 第 2 輪：2026-10-02 23:30（改 P-01）
+
+改了什麼：`tests/test_convert.py` 以「PDF 內容雜湊＋課程名」為鍵快取 `read_pdf_answers` 的結果，P-03 一併受惠（產品碼未動）。同一輪另加 4 條測試（PDF 快取守門 1 條、審查核對腳本 3 條），全套由 24 條變 28 條。
+量法：同一支腳本 `python tools/measure_perf.py --runs 5 --warmup 1 --only baseline,unittest`，版本 cc0607e 加未 commit 的 P-01。⚠️ 量測前 CPU 負載 54%、量後 35%，比第 1 輪的 4% 吵；Output 類最大值超過中位數兩倍。
+
+| 熱點 | 第 1 輪中位數／最大值 | 第 2 輪中位數／最大值 | 判讀 |
+| --- | --- | --- | --- |
+| unittest 端到端 | 89.32 s／89.63 s | 36.79 s／40.58 s | 走出雜訊帶（第 2 輪最大值仍低於第 1 輪最小值一半），低於使用者要的 60 s |
+| Corruption 類 | 78.80 s／80.24 s | 33.37 s／34.54 s | 佔 90.7%；剩下的是每條各自的 RTF 與 xlsx 解析（P-04、P-05） |
+| OfficialCrossCheck 類（含 setUpClass） | 7.86 s（setUpClass 等）| 29.0 ms／33.8 ms | P-03 併入 P-01 解掉 |
+| 空跑底線 Python／Node／npm | — | 63.2 ms／55.0 ms／357.7 ms | 供下一輪對照 |
+
+P-01、P-03 狀態改為已改善；P-02、P-04～P-09 不變。
+
