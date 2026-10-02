@@ -7,7 +7,7 @@
 
 ## 狀態
 
-M1 轉檔可用；M2 卡片練習網站第一版可在本機跑，尚未在手機實機操作過、尚未上線。進度見 [目標路線圖.md](目標路線圖.md)。
+M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
 測試：`python -m unittest discover -s tests` 24 條全綠（2026-10-02，本機 Python 3.11.9，需 openpyxl、pypdf）；
 網站邏輯 `npm test`（在 `web/`）8 條全綠（Node 24）。
 
@@ -16,7 +16,7 @@ M1 轉檔可用；M2 卡片練習網站第一版可在本機跑，尚未在手�
 在 `web/` 底下操作，第一次先 `npm install`：
 
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
-2. `npm run build`：產出 `web/dist/`，上線時整個資料夾放上 GitHub Pages。
+2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 會跑測試、建置並發布到 GitHub Pages，測試沒過就不發布。
 3. `npm test`：出題順序與練習紀錄的單元測試，會讀真的題庫 JSON 核對每課程題數。
 
 練習紀錄（練到第幾題、每題對錯）只存在該裝置瀏覽器的 localStorage，換手機或清除瀏覽資料就沒了；
