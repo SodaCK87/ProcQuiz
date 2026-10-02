@@ -21,6 +21,7 @@
   let kind = $state('true-false'), course = $state(0), order = $state('random');
   let deck = $state.raw(null);     // { key, ids, pos }
   let loadError = $state('');
+  const inLine = /\bLine\//.test(navigator.userAgent);
 
   let bank = $derived(banks[kind] ?? null);
   let byId = $derived(bank ? new Map(bank.questions.map(q => [q.id, q])) : new Map());
@@ -75,6 +76,9 @@
     <p>非官方練習站・先作答再翻卡看解析</p>
   </header>
 
+  {#if inLine}
+    <p class="hint" role="note">你正在 LINE 裡開這個網頁，練習紀錄可能保不住。請點右上角選單，改用 Chrome 或 Safari 開啟。</p>
+  {/if}
   {#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
 
   {#if view === 'start'}
@@ -117,5 +121,7 @@
   .go .btn{flex:1;padding:12px}
   .go .btn:not(.primary){color:var(--page-ink);background:rgba(28,20,12,.9)}
   .error{color:var(--bad);text-align:center}
+  .hint{margin:0 6px 14px;padding:10px 12px;border-radius:10px;font-size:14px;line-height:1.6;
+    color:var(--page-ink);background:rgba(28,20,12,.85);border:1px solid var(--gold)}
   footer{margin-top:22px;text-align:center;font-size:12px;color:var(--page-ink-2);opacity:.85;line-height:1.6}
 </style>
