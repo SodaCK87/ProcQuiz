@@ -60,7 +60,13 @@
     import('@fontsource/noto-serif-tc/700.css');
   }
 
-  function persist(){ save(progress); rev++; }
+  // 存檔延到閒置時：作答當下要先讓翻卡第一格出來，整份紀錄 stringify 加寫入不擋在點擊裡；離開頁面前一定寫完
+  let saveQueued = false;
+  const idle = globalThis.requestIdleCallback ?? (f => setTimeout(f, 200));
+  function flush(){ if (saveQueued){ saveQueued = false; save(progress); } }
+  function persist(){ rev++; if (!saveQueued){ saveQueued = true; idle(flush, { timeout: 1000 }); } }
+  addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
   async function begin(){
     const k = kind;  // 等下載時題型可能被切換，以按下當時的為準
