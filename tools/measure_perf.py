@@ -5,7 +5,9 @@
       python tools/measure_perf.py --only convert,web   只量指定段
       python tools/measure_perf.py --json 路徑          另存原始取樣（建議放 %TEMP%）
 
-段：baseline 空跑底線｜convert 轉檔核對｜unittest｜npmtest｜build 建置與產出大小｜web 網站純邏輯（在 Node 上量）。
+段：baseline 空跑底線｜convert 轉檔核對｜unittest｜npmtest｜build 建置與產出大小｜web 網站純邏輯（在 Node 上量）
+　　｜gate 交付把關 run_gate.py 端到端（第 10 輪起；它會重建 web/dist，那是不受版控的建置產出）
+　　｜buildfonts 字型子集化 build_fonts.py --check 端到端與分段（第 10 輪起）。
 結果與方法記在 docs/perf-baseline.md；改了熱點後用同一支、同一組參數重量，量法不改，新進入點只加新段。
 
 不量：tools/fetch_official.py（連政府網站，外部相依）；瀏覽器內的首屏、翻卡動畫、星空（要開瀏覽器，
@@ -31,7 +33,7 @@ TOOLS = ROOT / "tools"
 WEB = ROOT / "web"
 SOURCE = ROOT / "data" / "source"
 QUESTIONS = ROOT / "data" / "questions"
-SECTIONS = ["baseline", "convert", "unittest", "npmtest", "build", "web"]
+SECTIONS = ["baseline", "convert", "unittest", "npmtest", "build", "web", "gate", "buildfonts"]
 KIND_LABEL = {"true-false": "是非題", "multiple-choice": "選擇題"}
 
 
@@ -121,6 +123,42 @@ def child_unittest() -> dict:
             "failed": len(result.failures) + len(result.errors)}
 
 
+def child_buildfonts() -> dict:
+    """第 10 輪新段：build_fonts.build() 分段。換掉模組內的名字當埋點，產品碼不動；只算、不寫檔。"""
+    segs: dict[str, float] = {}
+    t = perf_counter()
+    sys.path.insert(0, str(TOOLS))
+    import build_fonts
+    segs["import build_fonts（含 fontTools）"] = perf_counter() - t
+    timed: list[tuple[str, float]] = []
+    parts = iter(["ui", "bank"] * len(build_fonts.WEIGHTS))  # build() 的呼叫順序：每種粗細先 ui 再 bank
+
+    def wrap(name: str, label=None):
+        orig = getattr(build_fonts, name)
+
+        def w(*a, **k):
+            t0 = perf_counter()
+            try:
+                return orig(*a, **k)
+            finally:
+                timed.append((label(*a) if label else name, perf_counter() - t0))
+        setattr(build_fonts, name, w)
+
+    wrap("charsets")
+    wrap("subset_font", lambda weight, want: f"subset_font：{weight} 粗細 {next(parts)}（{len(want)} 字）")
+    t = perf_counter()
+    files = build_fonts.build()
+    build_t = perf_counter() - t
+    for k, v in timed:
+        key = "charsets：掃介面與題庫用字" if k == "charsets" else k
+        segs[key] = segs.get(key, 0.0) + v
+    segs["build 其餘：組 CSS"] = build_t - sum(v for _, v in timed)
+    t = perf_counter()
+    stale = [p.name for p, data in files.items() if not p.exists() or p.read_bytes() != data]
+    segs["與已提交檔比對"] = perf_counter() - t
+    return {"segs": segs, "stale": stale, "bytes": {p.name: len(data) for p, data in files.items()}}
+
+
 # 網站純邏輯：在 Node 上量，桌機 V8 不等於手機，只當相對比較用。draw() 照抄 App.svelte 的 draw()，App 改了要同步
 WEB_JS = r"""
 import { readFileSync } from 'node:fs';
@@ -175,6 +213,16 @@ steady('load', () => P.load(store));
 const idx = buildIndex(banks)['true-false'];
 steady('startRows', () => [{ id: 0, count: idx.total, prefix: idx.prefix }, ...idx.courses]
   .map(c => P.statsByPrefix(p, c.prefix, c.count)));
+// 第 10 輪新段（38be386 重點字）：segments() 每題出卡都跑一次，fix 用真的 highlight-fixes.json。放在既有段之後，不影響上面的數字
+const { segments } = await import(url('web/src/lib/highlight.js'));
+const fixText = readFileSync(`${ROOT}/web/src/lib/highlight-fixes.json`, 'utf8'), fixes = JSON.parse(fixText);
+const allQ = Object.values(banks).flatMap(b => b.questions);
+let marked = 0;
+once('highlightAll', () => { for (const q of allQ) marked += segments(q.stem, fixes[q.id]).filter(s => s.hit).length; });
+let hi = 0;
+steady('highlightOne', () => { const q = allQ[hi++ % allQ.length]; segments(q.stem, fixes[q.id]); });
+out.info.highlight = { questions: allQ.length, fixes: Object.keys(fixes).length, fixesBytes: Buffer.byteLength(fixText), marked };
+if (!marked) throw new Error('segments() marked nothing; highlight measurement would be meaningless');
 console.log(JSON.stringify(out));
 """
 
@@ -406,6 +454,55 @@ def measure(b: Bench, only: list[str], inp: dict) -> None:
         b.row("save()：JSON.stringify 整份紀錄（不含 localStorage 寫入）", web + "：作答", ms("steady", "save"), None, pdesc)
         b.row("load()：讀回紀錄", web + "：開站", ms("steady", "load"), None, pdesc)
         b.row("首頁課程清單 15 列 statsByPrefix", web + "：開站／回首頁", ms("steady", "startRows"), None, pdesc)
+        # 第 10 輪新段：重點字
+        hl = info["highlight"]
+        hdesc = f"{hl['questions']} 題、微調 {hl['fixes']} 題（JSON {mb(hl['fixesBytes'])}）、標到 {hl['marked']} 處"
+        b.row("重點字 segments()：全部題目各跑一次（冷）", web + "：出卡（第 10 輪新段）", ms("cold", "highlightAll"), None, hdesc)
+        b.row("重點字 segments()：每題一次（穩態）", web + "：出卡（第 10 輪新段）", ms("steady", "highlightOne"), None, hdesc)
+
+    if "gate" in only:
+        # 第 10 輪新段：交付把關入口（f7bb0d3 起本機交付前與 CI 跑的是同一支）。三步的秒數取 run_gate 自己印的總表，
+        # 與端到端同一次執行；它的 npm run build 會寫 web/dist（不受版控的建置產出）
+        def e2e():
+            wall, rc, out = run([py, str(TOOLS / "run_gate.py")])
+            if rc != 0:
+                b.problems.append(f"run_gate.py 回 {rc}：{out.strip()[-300:]}")
+            steps = {m.group(1): float(m.group(2)) for m in re.finditer(r"[✓✗] (.+?)（([\d.]+) 秒）", out)}
+            if len(steps) != 3:
+                raise RuntimeError(f"讀不到 run_gate 總表的三步秒數：\n{out[-1500:]}")
+            return wall, steps
+        got = b.repeat("run_gate e2e", e2e)
+        walls = [g[0] for g in got]
+        gdesc = f"unittest＋npm test＋npm run build；{src_desc}"
+        b.row("python tools/run_gate.py 端到端（交付把關）", "tools/run_gate.py", walls, None, gdesc)
+        for name in got[0][1]:
+            vals = [g[1][name] for g in got]
+            b.row(f"把關步驟：{name}（run_gate 自報）", "tools/run_gate.py", vals, [v / w for v, w in zip(vals, walls)], gdesc)
+        rest = [w - sum(g[1].values()) for w, g in zip(walls, got)]
+        b.row("把關其餘（直譯器啟動與印總表）", "tools/run_gate.py", rest, [r / w for r, w in zip(rest, walls)], gdesc)
+
+    if "buildfonts" in only:
+        # 第 10 輪新段：字型子集化（214e4dd 起，題庫或介面文字改了才重跑）。只跑 --check，不寫檔
+        def e2e():
+            wall, rc, out = run([py, str(TOOLS / "build_fonts.py"), "--check"])
+            if rc != 0:
+                b.problems.append(f"build_fonts.py --check 回 {rc}：{out.strip()[-300:]}")
+            return wall
+        walls = b.repeat("build_fonts --check e2e", e2e)
+
+        def seg():
+            wall, rc, out = run([py, str(Path(__file__).resolve()), "--child", "buildfonts"])
+            if rc != 0:
+                raise RuntimeError(f"buildfonts 分段子行程失敗：{out[-2000:]}")
+            d = last_json(out)
+            if d["stale"]:
+                b.problems.append(f"分段子行程：子集字型與已提交檔不同 {d['stale']}（同 build_fonts.py --check 失敗）")
+            return wall, d["segs"], d["bytes"]
+        got = b.repeat("build_fonts 分段", seg)
+        fdesc = ("@fontsource 切片 → " + "＋".join(f"{k} {mb(v)}" for k, v in got[0][2].items() if k.endswith(".woff2"))
+                 + f"；{src_desc}")
+        b.row("build_fonts.py --check 端到端（子集化並與已提交檔比對）", "tools/build_fonts.py", walls, None, fdesc)
+        b.seg_rows("tools/build_fonts.py", walls, [g[0] for g in got], [g[1] for g in got], fdesc)
 
 
 def dist_sizes(d: Path) -> list[tuple]:
@@ -424,6 +521,12 @@ def dist_sizes(d: Path) -> list[tuple]:
         ("字型 CSS 400＋700（題庫到手後載入）", *g(pick(r"^(400|700)-.*\.css$"))),
         ("字型切片 woff2（只抓用到的 unicode-range）", *g(pick(r"\.woff2$"))),
         ("字型切片 woff（舊格式備援，新瀏覽器不抓）", *g(pick(r"\.woff$"))),
+        # 第 10 輪新段（214e4dd 子集字型、38be386 重點字）。上面「字型 CSS 400＋700」與「woff」兩列在 HEAD 已不存在，
+        # 照舊留著讓它印 0 檔；「字型切片 woff2」那列現在數到的就是下面兩列的 4 檔
+        ("字型 CSS（子集宣告，題庫到手後載入）", *g(pick(r"^fonts-.*\.css$"))),
+        ("字型子集 ui 兩檔 400＋700（首頁就抓）", *g(pick(r"^noto-serif-tc-\d+-ui-.*\.woff2$"))),
+        ("字型子集 bank 兩檔 400＋700（出卡才抓）", *g(pick(r"^noto-serif-tc-\d+-bank-.*\.woff2$"))),
+        ("重點字微調 chunk（題庫之後載入）", *g(pick(r"^highlight-fixes-.*\.js$"))),
         ("dist 全部（部署上傳量）", *g(files)),
     ]
 
@@ -442,6 +545,12 @@ def environment() -> dict:
     import platform
     env = {"時間": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"), "機器": platform.node(),
            "OS": platform.platform(), "CPU 邏輯核心": os.cpu_count(), "Python": platform.python_version()}
+    # 第 10 輪起：PDF 抽字、xlsx 解析、字型子集化用的套件版本（本機裝的可能跟 requirements.txt 釘的不同）
+    for mod in ("pypdf", "openpyxl", "fontTools"):
+        try:
+            env[mod] = __import__(mod).__version__
+        except Exception as e:
+            env[mod] = f"讀不到：{e}"
     for name, argv in (("Node", ["node", "--version"]), ("npm", ["npm", "--version"])):
         try:
             env[name] = run([tool(argv[0]), *argv[1:]])[2].strip()
@@ -520,10 +629,11 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--warmup", type=int, default=1)
     ap.add_argument("--only", default=",".join(SECTIONS))
     ap.add_argument("--json")
-    ap.add_argument("--child", choices=["convert", "unittest"])
+    ap.add_argument("--child", choices=["convert", "unittest", "buildfonts"])
     a = ap.parse_args(argv)
     if a.child:
-        print(json.dumps(child_convert() if a.child == "convert" else child_unittest()))
+        child = {"convert": child_convert, "unittest": child_unittest, "buildfonts": child_buildfonts}[a.child]
+        print(json.dumps(child()))
         return 0
     only = [s.strip() for s in a.only.split(",") if s.strip()]
     bad = set(only) - set(SECTIONS)

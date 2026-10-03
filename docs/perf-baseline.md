@@ -396,3 +396,242 @@ App.svelte 的過期字型註解併在 214e4dd 改寫。
 
 使用者在手機上開線上站 8b8d47f，在首頁上下捲動讓網址列收合，星空沒有整片重排；第 7 輪「星空隨網址列重抽」（6d55dd9）實機確認。
 
+## 第 10 輪：2026-10-03（全面盤點第二輪基準）
+
+目的：第 1 輪（dd97eb9）之後 29 個 commit、第 2～9 輪各做了一部分，這一輪在 HEAD d87d6a0 用同一套量法重建一份可比的全套基準，並盤第 3 輪 13 個熱點與延後項的現況。沒有改任何產品碼。量測腳本只加段：`tools/measure_perf.py` 新段 `gate`（run_gate.py 端到端＋三步佔比）、`buildfonts`（build_fonts.py --check 端到端＋分段）、`web` 段尾加重點字 `segments()` 兩列、產出大小表加 4 列、環境多印 pypdf／openpyxl／fontTools 版本；`tools/measure_browser.mjs` 新增 `serve:<資料夾>`（腳本內建靜態伺服器：文字資源 gzip、`max-age=600` 比照 GitHub Pages，量完關掉）、`load`（開站）與 `next`（下一題）兩個模式。既有段的量法一字未改（`git diff` 的刪除行只有段落清單、用法字串與 `finish` 關伺服器）。熱點編號 P-01 起重新配發，只在本輪有效。
+
+### 量測環境
+
+1. 機器：LAPTOP-JI7EEVA5，16 個邏輯核心，Windows 11（10.0.26200）。插電、電量 100%，電源計畫「平衡」。
+2. 版本：d87d6a0（2026-10-03 20:41）。未 commit 5 檔：三份盤點產出與上述兩支量測腳本，受測的產品碼與 HEAD 相同。
+3. 組態：Python 3.11.9、pypdf 6.12.1、openpyxl 3.1.5、fontTools 4.63.0；Node v24.16.0、npm 11.13.0、vite 8.3.2 的 production 建置。⚠️ 本機 pypdf 6.12.1 與 `requirements.txt` 釘的 6.19.0 不同，CI 跑的是 6.19.0；PDF 抽字是 convert 的最大成本，兩版速度本輪沒有比較（屬 R18／R19 範圍）。
+4. 背景負載：A～D 四組已收工、主線沒跑指令。腳本段量測前 CPU 負載 10%、量後 1%（第 1 輪 4%／22%，第 3 輪 45%／60%）；瀏覽器段跑完 19%。
+5. 取樣：腳本段 warmup 1 次不計、正式 5 次。瀏覽器 `load` warmup 1 次不計、正式 5 次（每次關快取重新載入）；`start` 5 次；`flip-idle` 翻卡 6 次、閒置 3 組 × 2.5 s；`next` 6 次；`home-idle` 5 次 × 2 s。
+6. 輸入：`data/source/` 與第 1 輪相同（RTF 6.88 MB、PDF 905 KB 244 頁、xlsx 405 KB＋297 KB）；題庫是非 2,686 題 1.15 MB、選擇 913 題 698 KB、註記 99 則；新增 `web/src/lib/highlight-fixes.json` 92 KB（微調 1,366 題）。unittest 32 條（第 1 輪 24、第 2 輪 28），npm test 29 條（第 1 輪 16）。
+7. 瀏覽器：本機 Chrome `--headless=new`（有 GPU，跟螢幕跑 162–165 Hz，幀預算取 1.5 倍幀距 ≈ 9.1 ms，比手機的 16.7 ms 嚴）經 CDP 驅動，375×812、DPR 2、mobile。對象是 HEAD 的本機建置（`npm run build -- --outDir` 到 session 暫存區，沒碰 `web/dist`），由 `measure_browser.mjs` 的 `serve:` 供應。開站那段用 CDP 關快取、模擬 Fast 4G（下行 1,012,500 B/s、上行 168,750 B/s、每請求 165 ms；✅ 本輪從 Chromium devtools-frontend `front_end/core/sdk/NetworkManager.ts` 原文核對：`9 * 1000 * 1000 / 8 * .9`、`1.5 * 1000 * 1000 / 8 * .9`、`60 * 2.75`）＋CPU 4 倍降速，是第 1 輪模型換算的實量版。⚠️ 導航請求的 TTFB 在 CDP 節流下只有 4 ms、不含 165 ms 延遲（HTML 到手 195 ms 才含），開站的時間軸以「HTML 到手」起算，不用 TTFB。
+8. ⚠️ 第 3／6 輪用的內建瀏覽器 pane（165 Hz、實體 GPU）本輪沒用：量法改以進版控的 `measure_browser.mjs` 為正本，跨輪對照以第 4、5、7 輪的無頭數字為準。
+9. 剖析器：同第 1 輪，只有埋點計時。
+10. 原始輸出：session 暫存區 `r10-perf.md`、`r10-perf.json`、`r10-load-4g.json`、`r10-load-none.json`、`r10-start.json`、`r10-flip.json`、`r10-next.json`、`r10-home.json`、`r10-fonts.json`（不進 repo）。
+
+### 入口清單（HEAD d87d6a0）
+
+使用者預期一欄：標「上輪」的是 2026-10-02 的回答，標「本輪」的是 2026-10-03 全面盤點時的回答。
+
+| 進入點 | 觸發方式 | 使用者預期等多久 | 要不要開宿主 | 第 1 輪 → HEAD | 本輪 |
+| --- | --- | --- | --- | --- | --- |
+| `python tools/convert.py --check` | 官方換版時 | 約 12 秒可接受（上輪） | 否 | 沿用 | ✅ 已量 9.06 s |
+| `python -m unittest discover -s tests` | 改 tools 之後 | 1 分鐘內（上輪） | 否 | 24 條 → 32 條 | ✅ 已量 32.23 s |
+| `python tools/run_gate.py` | 本機交付前；CI 每次 push 跑同一支 | 1 分鐘內，超過黃、超過 2 分鐘紅（本輪） | 否 | f7bb0d3 新增 | ✅ 已量 34.86 s |
+| `python tools/build_fonts.py --check`／重跑 | 題庫或介面文字改了 | 30 秒內（本輪） | 否 | 214e4dd 新增 | ✅ 已量 16.10 s |
+| `npm test` | 改網站後；CI | 沒有要求 | 否 | 16 條 → 29 條 | ✅ 已量 0.91 s |
+| `npm run build` | 同上 | 沒有要求 | 否 | 產出 425 檔 15.09 MB → 11 檔 2.39 MB | ✅ 已量 1.62 s |
+| 開站到首頁可按 | 手機開網址 | 4G 下 3 秒內（上輪） | 瀏覽器 | 第 1 輪只有模型 | ✅ 模擬實量：Fast 4G＋CPU 4× 首次繪製 0.544 s |
+| 題庫背景下載 | 開站後自動 | 按「開始練習」前到手就好（上輪） | 瀏覽器 | 沿用 | ✅ 同上：0.850 s |
+| 重點字微調 chunk（highlight-fixes） | 題庫到手後自動 | 比照題庫：按開始前到手就好（本輪） | 瀏覽器 | 38be386、6af33bd 新增；gzip 18 KB | ✅ 同上：1.074 s |
+| 思源宋體子集換上 | 題庫到手後自動 | 比照題庫：按開始前到手就好，不另設幾秒的線（本輪） | 瀏覽器 | 19 塊 858 KB → 首頁 2 檔 268 KB | ✅ 同上：1.525 s |
+| 按「開始練習」到第一張卡 | 點按鈕 | 不掉幀（上輪） | 瀏覽器 | 沿用 | ✅ 已量：最長一幀 36 ms |
+| 作答翻卡 | 點答案 | 不掉幀（上輪） | 瀏覽器 | 沿用 | ✅ 已量：超過預算 0 格 |
+| 按「下一題」 | 點按鈕 | 不掉幀（上輪） | 瀏覽器 | 第 3 輪只手量 3 次 | ✅ 已量（新模式 `next`）：0 格 |
+| 常駐動畫（星空、流光、符文、火花、星芒） | 一直在跑 | 不掉幀、要算耗電與發燙（上輪）；卡片閒置時主緒佔用 ≤ 20%（本輪） | 瀏覽器 | 星芒為 38be386 新增 | ✅ 已量：卡片閒置 14.6%、首頁閒置 4.6% |
+| CI 發布（`.github/workflows/pages.yml`） | push main | 不設線，只記數字（本輪） | GitHub | 沿用 | ✅ 讀 `gh run`：push 到上線 62–73 s |
+| `tools/fetch_official.py`、`npm run dev`、`tools/review/*.py`（含新 highlight_check.py） | — | — | — | review 腳本已由 unittest 的 ReviewChecks／HighlightCheck 兩類以子行程計入 | 不量 |
+
+消失的入口與產出：`tmp/review`（搬進 `data/review/work`）、@fontsource 執行期 418 個切片與 400／700 兩份 CSS、page-dim 全螢幕層；第 3 輪 P-05、P-13 已還原，沒有留下新入口。
+
+### 腳本輸出（`python tools/measure_perf.py --runs 5 --warmup 1`）
+
+量測時間 2026-10-03 21:21，總耗時 927 s（含新段 gate 與 buildfonts）。數字照腳本輸出，沒有改動；重複的輸入描述改成「同上」，網站列的進入點名稱縮短。71 列沒有任何一列被標「環境有噪音」（最大值都沒超過中位數兩倍）。
+
+| 熱點 | 所屬進入點 | 中位數／最大值 | 取樣次數 | 佔該進入點總時間比例 | 輸入檔大小筆數 |
+| --- | --- | --- | --- | --- | --- |
+| Python 啟動（python -c pass） | 空跑底線 | 58.8 ms／62.5 ms | 5 | — | — |
+| Node 啟動（node -e 0） | 空跑底線 | 50.8 ms／51.5 ms | 5 | — | — |
+| npm 啟動（npm --version） | 空跑底線 | 311.3 ms／320.0 ms | 5 | — | — |
+| convert.py --check 端到端 | tools/convert.py | 9.06 s／9.17 s | 5 | — | RTF 6.88 MB、PDF 905 KB 244 頁、xlsx 405 KB＋297 KB、題數 2686＋913、註記 99 則 |
+| import convert（含 openpyxl） | tools/convert.py | 295.3 ms／309.5 ms | 5 | 3.3% | 同上 |
+| import pypdf | tools/convert.py | 100.4 ms／107.9 ms | 5 | 1.1% | 同上 |
+| read_rtf：RTF 解析 | tools/convert.py | 557.6 ms／560.0 ms | 5 | 6.2% | 同上 |
+| read_pdf_answers：PDF 抽字 | tools/convert.py | 6.27 s／6.35 s | 5 | 69.2% | 同上 |
+| cross_check：RTF 與 PDF 逐題比對 | tools/convert.py | 0.587 ms／0.704 ms | 5 | 0.0% | 同上 |
+| read_xlsx：是非題解析 xlsx | tools/convert.py | 1.07 s／1.11 s | 5 | 11.8% | 同上 |
+| read_xlsx：選擇題解析 xlsx | tools/convert.py | 308.4 ms／312.3 ms | 5 | 3.4% | 同上 |
+| apply_review：掛審查註記 | tools/convert.py | 5.273 ms／5.588 ms | 5 | 0.1% | 同上 |
+| check_duplicates：同題答案一致 | tools/convert.py | 38.0 ms／38.5 ms | 5 | 0.4% | 同上 |
+| build 其餘：題文配對與組裝 | tools/convert.py | 81.1 ms／82.6 ms | 5 | 0.9% | 同上 |
+| render 與已提交 JSON 比對 | tools/convert.py | 36.4 ms／39.1 ms | 5 | 0.4% | 同上 |
+| 子行程內分段外其餘（直譯器啟動等） | tools/convert.py | 180.8 ms／199.7 ms | 5 | 2.0% | 同上 |
+| 端到端減分段子行程（中位數相減） | tools/convert.py | 176.3 ms／176.3 ms | 1 | 1.9% | 同上 |
+| （分段子行程總時間） | tools/convert.py | 8.89 s／9.05 s | 5 | — | 同上 |
+| python -m unittest discover -s tests 端到端 | unittest | 32.23 s／34.10 s | 5 | — | 32 條測試；RTF 6.88 MB、PDF 905 KB 244 頁、xlsx 405 KB＋297 KB、題數 2686＋913、註記 99 則 |
+| 類別 Corruption | unittest | 27.77 s／27.93 s | 5 | 86.2% | 同上 |
+| 類別 OfficialCrossCheck | unittest | 22.2 ms／22.5 ms | 5 | 0.1% | 同上 |
+| 類別 Output | unittest | 1.43 s／1.45 s | 5 | 4.4% | 同上 |
+| 類別 PureFunctions | unittest | 0.239 ms／0.265 ms | 5 | 0.0% | 同上 |
+| 類別 ReviewNotes | unittest | 12.8 ms／13.0 ms | 5 | 0.0% | 同上 |
+| 類別 Fonts | unittest | 37.4 ms／37.8 ms | 5 | 0.1% | 同上 |
+| 類別 HighlightCheck | unittest | 826.8 ms／841.8 ms | 5 | 2.6% | 同上 |
+| 類別 ReviewChecks | unittest | 720.4 ms／730.0 ms | 5 | 2.2% | 同上 |
+| 探索、setUpClass 與測試之間 | unittest | 1.04 s／1.05 s | 5 | 3.2% | 同上 |
+| 子行程內分段外其餘（直譯器啟動等） | unittest | 221.5 ms／244.4 ms | 5 | 0.7% | 同上 |
+| 端到端減分段子行程（中位數相減） | unittest | 146.4 ms／146.4 ms | 1 | 0.5% | 同上 |
+| （分段子行程總時間） | unittest | 32.08 s／32.21 s | 5 | — | 同上 |
+| npm test 端到端 | npm test | 911.7 ms／918.2 ms | 5 | — | 29 條測試，讀真的題庫 JSON |
+| 測試：highlight-fixes.json 每一筆都對得上現行題目 | npm test | 39.0 ms／47.3 ms | 5 | 4.3% | 同上 |
+| 測試：緊鄰的重點字併成一段，片段接回去等於原文 | npm test | 28.7 ms／33.6 ms | 5 | 3.1% | 同上 |
+| 測試：首頁用題號前綴算的進度，與用整份題庫算的相同 | npm test | 17.3 ms／17.6 ms | 5 | 1.9% | 同上 |
+| 其餘 26 條測試 | npm test | 64.3 ms／72.0 ms | 5 | 7.0% | 同上 |
+| 子行程內分段外其餘（直譯器啟動等） | npm test | 391.8 ms／398.0 ms | 5 | 43.0% | 同上 |
+| 端到端減分段子行程（中位數相減） | npm test | 367.2 ms／367.2 ms | 1 | 40.3% | 同上 |
+| （分段子行程總時間） | npm test | 544.5 ms／550.3 ms | 5 | — | 同上 |
+| npm run build 端到端（輸出到暫存資料夾） | npm run build | 1.62 s／1.64 s | 5 | — | 題庫 JSON 兩包＋字型 @fontsource |
+| vite 自報 built in（轉換與打包） | npm run build | 360.0 ms／366.0 ms | 5 | 22.2% | — |
+| npm／node 啟動與設定載入（端到端扣 vite 自報） | npm run build | 1.27 s／1.28 s | 5 | 77.8% | — |
+| bank-index 外掛：解析兩包題庫＋抽課程清單 | npm run build | 4.402 ms／4.520 ms | 5 | 0.3% | JSON 1.15 MB＋698 KB |
+| 題庫到手後 JSON 解析（是非，代理指標） | 網站（Node 代量）：題庫下載完成 | 1.737 ms／1.794 ms | 5 | — | 1.15 MB；瀏覽器實際是執行 JS chunk |
+| byId 對照表（App.svelte:29） | 網站（Node 代量）：題庫下載完成 | 0.559 ms／0.689 ms | 5 | — | 2686 題 |
+| 第一次出題 draw（冷啟動） | 網站（Node 代量）：按開始練習 | 1.035 ms／1.340 ms | 5 | — | 紀錄滿載：3599 題都作答過、紀錄 138 KB、是非錯題 1507 題 |
+| 出題 draw：全部模式 | 網站（Node 代量）：按下一題 | 0.219 ms／0.221 ms | 5 | — | 同上 |
+| 出題 draw：錯題模式（兩次 pool） | 網站（Node 代量）：按下一題 | 0.231 ms／0.235 ms | 5 | — | 同上 |
+| stats()：作答後重算範圍統計 | 網站（Node 代量）：作答 | 0.102 ms／0.104 ms | 5 | — | 同上 |
+| save()：JSON.stringify 整份紀錄（不含 localStorage 寫入） | 網站（Node 代量）：作答 | 1.016 ms／1.080 ms | 5 | — | 同上 |
+| load()：讀回紀錄 | 網站（Node 代量）：開站 | 1.299 ms／1.363 ms | 5 | — | 同上 |
+| 首頁課程清單 15 列 statsByPrefix | 網站（Node 代量）：開站／回首頁 | 5.135 ms／5.166 ms | 5 | — | 同上 |
+| 重點字 segments()：全部題目各跑一次（冷） | 網站（Node 代量）：出卡（第 10 輪新段） | 13.3 ms／13.7 ms | 5 | — | 3599 題、微調 1366 題（JSON 92 KB）、標到 3582 處 |
+| 重點字 segments()：每題一次（穩態） | 網站（Node 代量）：出卡（第 10 輪新段） | 0.003 ms／0.003 ms | 5 | — | 同上 |
+| python tools/run_gate.py 端到端（交付把關） | tools/run_gate.py | 34.86 s／35.09 s | 5 | — | unittest＋npm test＋npm run build；RTF 6.88 MB、PDF 905 KB 244 頁、xlsx 405 KB＋297 KB、題數 2686＋913、註記 99 則 |
+| 把關步驟：Python 測試（run_gate 自報） | tools/run_gate.py | 32.20 s／32.50 s | 5 | 92.4% | 同上 |
+| 把關步驟：網站測試（run_gate 自報） | tools/run_gate.py | 900.0 ms／900.0 ms | 5 | 2.6% | 同上 |
+| 把關步驟：網站建置（run_gate 自報） | tools/run_gate.py | 1.60 s／1.60 s | 5 | 4.6% | 同上 |
+| 把關其餘（直譯器啟動與印總表） | tools/run_gate.py | 148.5 ms／209.1 ms | 5 | 0.4% | 同上 |
+| build_fonts.py --check 端到端（子集化並與已提交檔比對） | tools/build_fonts.py | 16.10 s／16.21 s | 5 | — | @fontsource 切片 → noto-serif-tc-400-ui.woff2 129 KB＋noto-serif-tc-400-bank.woff2 191 KB＋noto-serif-tc-700-ui.woff2 133 KB＋noto-serif-tc-700-bank.woff2 196 KB；RTF 6.88 MB、PDF 905 KB 244 頁、xlsx 405 KB＋297 KB、題數 2686＋913、註記 99 則 |
+| import build_fonts（含 fontTools） | tools/build_fonts.py | 134.8 ms／135.1 ms | 5 | 0.8% | 同上 |
+| charsets：掃介面與題庫用字 | tools/build_fonts.py | 73.8 ms／76.0 ms | 5 | 0.5% | 同上 |
+| subset_font：400 粗細 ui（700 字） | tools/build_fonts.py | 3.19 s／3.20 s | 5 | 19.8% | 同上 |
+| subset_font：400 粗細 bank（915 字） | tools/build_fonts.py | 4.83 s／4.85 s | 5 | 30.0% | 同上 |
+| subset_font：700 粗細 ui（700 字） | tools/build_fonts.py | 3.05 s／3.08 s | 5 | 18.9% | 同上 |
+| subset_font：700 粗細 bank（915 字） | tools/build_fonts.py | 4.71 s／4.74 s | 5 | 29.2% | 同上 |
+| build 其餘：組 CSS | tools/build_fonts.py | 1.910 ms／1.982 ms | 5 | 0.0% | 同上 |
+| 與已提交檔比對 | tools/build_fonts.py | 0.924 ms／0.998 ms | 5 | 0.0% | 同上 |
+| 子行程內分段外其餘（直譯器啟動等） | tools/build_fonts.py | 134.8 ms／135.7 ms | 5 | 0.8% | 同上 |
+| 端到端減分段子行程（中位數相減） | tools/build_fonts.py | -25.6 ms／-25.6 ms | 1 | -0.2% | 同上 |
+| （分段子行程總時間） | tools/build_fonts.py | 16.12 s／16.18 s | 5 | — | 同上 |
+convert 的「端到端減分段子行程」176 ms 與 unittest 的 146 ms 都在雜訊內，埋點沒有改變成本；npm test 的 367 ms 是 `npm run` 包裝開銷（與第 1 輪 450 ms 同級）。
+
+建置產出大小（腳本以 zlib 等級 6 估 gzip）：
+
+| 項目 | 檔數 | 原始 | gzip 估 | 第 1 輪 |
+| --- | --- | --- | --- | --- |
+| 首屏關鍵路徑（index.html＋入口 js／css） | 3 | 84 KB | 31 KB | 79 KB／29 KB |
+| 是非題題庫 chunk（背景下載） | 1 | 1011 KB | 200 KB | 同 |
+| 選擇題題庫 chunk（背景下載） | 1 | 613 KB | 151 KB | 同 |
+| 字型 CSS 400＋700（@fontsource，HEAD 已不存在） | 0 | 0 | 0 | 2 檔 258 KB／106 KB |
+| 字型切片 woff2（舊列名；HEAD 數到的就是下面 4 個子集檔） | 4 | 649 KB | 649 KB | 208 檔 5.83 MB |
+| 字型切片 woff（HEAD 已不存在） | 0 | 0 | 0 | 210 檔 7.34 MB |
+| 字型 CSS（子集宣告，題庫到手後載入）（新列） | 1 | 20 KB | 4 KB | — |
+| 字型子集 ui 兩檔 400＋700（首頁就抓）（新列） | 2 | 262 KB | 262 KB | — |
+| 字型子集 bank 兩檔 400＋700（出卡才抓）（新列） | 2 | 387 KB | 387 KB | — |
+| 重點字微調 chunk（題庫之後載入）（新列） | 1 | 66 KB | 18 KB | — |
+| dist 全部（部署上傳量） | 11 | 2.39 MB | 1.03 MB | 425 檔 15.09 MB／13.65 MB |
+
+### 瀏覽器實測（`node tools/measure_browser.mjs <模式> serve:<HEAD 建置>`，2026-10-03 21:37–21:41）
+
+| 項目 | 中位數／最大值（或範圍） | 取樣 | 量法與對照 |
+| --- | --- | --- | --- |
+| ✅ 開站 HTML 到手，Fast 4G＋CPU 4× | 195 ms／198 ms | 5 | `load --cpu 4 --net fast4g`，每次關快取；含 165 ms 模擬延遲 |
+| ✅ 開站「開始練習」按鈕進 DOM（可按） | 458 ms／464 ms | 5 | 文件建立前注入的 MutationObserver；在 DCL（521／536 ms）之前，Svelte 同步掛載 |
+| ✅ 開站首次繪製 FCP（＝LCP） | 544 ms／564 ms | 5 | 同上。這是使用者看得到按鈕的時刻，低於 3 s 的線；第 1 輪模型估 0.63 s（保守 1.7 s） |
+| ✅ 題庫 chunk 到手（205,393 B） | 850 ms／856 ms | 5 | Resource Timing responseEnd；可按之後 0.39 s（第 1 輪模型 0.37 s） |
+| ✅ 重點字微調 chunk 到手（17,987 B） | 1,074 ms／1,095 ms | 5 | 同上；排在題庫之後（b0eb94d） |
+| ✅ 字型 CSS 到手（4,259 B） | 1,057 ms／1,081 ms | 5 | 同上 |
+| ✅ 字型檔到手：ui 兩檔 268,168 B | 1,525 ms／1,546 ms | 5 | 同上；第 1 輪模型 2.3 s（19 塊 858 KB）。⚠️ 開站 1.5 s 內就按「開始練習」的人，字會在卡片出現後才換成思源宋體 |
+| ✅ 開站，無節流、CPU 1×（對照） | HTML 4／17 ms、可按 25／37 ms、FCP 68／80 ms、題庫 48／60 ms、字型檔 93／107 ms | 5 | `load`，本機伺服器；只給相對大小 |
+| ✅ 傳輸量（gzip 後實際位元組） | HTML 427、入口 JS 28,164、入口 CSS 3,716、題庫 205,393、微調 17,987、字型 CSS 4,259、字型 ui 2 檔 268,168 | 1 | Resource Timing encodedBodySize；第 1 輪線上站入口 JS 26,220、題庫 209,712 |
+| ✅ 按「開始練習」後前 8 幀最長一幀 | 36 ms（36–36）；5 次為 358、36、36、36、36 | 5 | `start`；第一次是 Chrome 新開後第一次出卡（字型與紙紋第一次點陣化），其餘 4 次一致。第 7 輪無頭 36 ms、pane 30 ms |
+| ✅ 作答翻卡 1.4 s 內超過 9.2 ms 的幀 | 0 格（0–1），合計 0 ms（0–12），最長 6 ms（6–12） | 6 | `flip-idle`，162.5 Hz；第 3 輪 16 格 206 ms、第 6 輪 0 格 |
+| ✅ 卡片閒置主緒佔用 | 14.6%（14.4–14.9） | 3 × 2.5 s | 同上；使用者線 ≤ 20%。第 4 輪同環境（無頭有 GPU）29.8%，第 6 輪 pane 19.3% |
+| ✅ 同頁 A／B：拿掉星芒（`.star{animation:none;filter:none}`） | 翻卡 0 格（0–4）；閒置 14.9%（14.6–15.2） | 6／3 | 與現況交錯量；差異在雜訊內，星芒的成本量不出來 |
+| ✅ 按「下一題」1.5 s 內超過 9.1 ms 的幀 | 0 格（0–0），最長 6 ms | 6 | 新模式 `next`，165.5 Hz；第 3 輪 1–10 格 |
+| ✅ 首頁閒置主緒佔用 | 4.6%（4.5–5.4） | 5 × 2 s | `home-idle`；第 3 輪 9.7%、第 5 輪無頭 3.9%、第 6 輪 pane 4.8% |
+| ✅ 星空每秒畫格 | 60（60–60.5） | 5 | 同上，數 `clearRect`；a26325d 的 60 格上限生效 |
+| ✅ 字型檔數與位元組 | 首頁 2 檔 268,168 B；出卡後 3 檔 463,476 B | 1 | `fonts`；第 7 輪 2 檔 266 KB、3 檔 462 KB |
+| ✅ CI：push 到線上更新 | 62、72、73 s（最近 3 次，d87d6a0、8b8d47f、e349a77） | 3 | `gh run list`／`gh run view`：build job 47–56 s（其中 `run_gate` 步驟 34–35 s、`npm ci` 2–4 s、`pip install` 3 s）、deploy job 8–12 s。使用者不設線 |
+
+### 跨輪對照
+
+| 入口 | 第 1 輪 | 中間各輪 | 第 10 輪中位數／最大值 | 判讀 |
+| --- | --- | --- | --- | --- |
+| convert.py --check | 9.48 s／9.72 s | — | 9.06 s／9.17 s | 沒改程式；空跑底線同向變快（Python 啟動 62.5 → 58.8 ms），視為環境差異。低於 12 s 線 |
+| unittest | 89.32 s／89.63 s（24 條） | 第 2 輪 36.79／40.58（28 條，CPU 54%） | 32.23 s／34.10 s（32 條） | 低於 60 s 線，餘裕 26 s；比第 2 輪少是第 2 輪環境吵 |
+| run_gate.py | — | — | 34.86 s／35.09 s | 新入口；低於 60 s 線。CI 的 ubuntu 跑同一支 34–35 s |
+| build_fonts.py --check | — | — | 16.10 s／16.21 s | 新入口；低於 30 s 線 |
+| npm test | 696.7 ms（16 條） | 第 3 輪 866 ms（17 條，吵） | 911.7 ms／918.2 ms（29 條） | 測試本體 150 ms，其餘是 npm 包裝與 node 啟動；沒有要求 |
+| npm run build | 2.24 s | 第 3 輪 3.14 s（吵） | 1.62 s／1.64 s | 字型子集化後 dist 15 MB → 2.4 MB；沒有要求 |
+| 開站首次繪製（Fast 4G＋CPU 4×） | 📌 模型 0.63 s | — | ✅ 0.544 s／0.564 s | 低於 3 s 線 |
+| 字型換上 | 📌 模型 2.3 s | 第 7 輪 20 檔 → 2 檔 | ✅ 1.525 s／1.546 s | 在「按開始前到手」的線內 |
+| 翻卡掉幀 | 量不到 | 第 3 輪 16 格、第 6 輪 0 格 | 0 格（0–1） | 不掉幀 |
+| 卡片閒置主緒 | 量不到 | 第 3 輪 29.1%、第 4 輪無頭 29.8%、第 6 輪 19.3% | 14.6%（14.4–14.9） | 低於 20% 線 |
+| 首頁閒置主緒 | 量不到 | 第 3 輪 9.7%、第 6 輪 4.8% | 4.6%（4.5–5.4） | — |
+| 出卡最長一幀 | 量不到 | 第 7 輪 48 → 36 ms（無頭） | 36 ms | 每次按「開始練習」一次；見 P-06 |
+
+### 第 3 輪 13 個熱點與延後項、第 1 輪 9 個熱點的現況
+
+| 第 3 輪編號 | 現況 | 本輪數字或依據 |
+| --- | --- | --- |
+| P-01 翻卡 will-change | ✅ 已改善（6d02075） | 翻卡超過預算 0 格 |
+| P-02 背面動畫暫停 | ✅ 已改善（7251dfe） | 卡片閒置 14.6% |
+| P-03 星空限 60 格 | ✅ 已改善（a26325d） | 60 格／秒、首頁閒置 4.6% |
+| P-04 出卡卡兩格 | 已查明、保留 | 第 7 輪 trace：GPU 第一次點陣化；不改外觀只剩 P-10 能縮；本輪 36 ms，轉為本輪 P-06 |
+| P-05 題庫改 fetch | ❌ 量過無效、已還原 | — |
+| P-06 字型 CSS 瘦身 | ✅ 由 P-07 取代 | 字型 CSS gzip 4 KB |
+| P-07 字型子集化 | ✅ 已改善（214e4dd） | 首頁 2 檔 268 KB、出卡 3 檔 463 KB |
+| P-08 存檔延到閒置 | ✅ 已改善（45093a2） | — |
+| P-09 page-dim 併入 | ✅ 已改善（157b75f） | — |
+| P-10 流光縮小 | ✅ 已改善（bff063f） | 出卡最長一幀 36 ms |
+| P-11 汙漬紋理 1 倍 | ✅ 已改善（e349a77） | — |
+| P-12 紋理變數一次寫 | ✅ 已改善（82925fd） | — |
+| P-13 LINE 不掛載 | ❌ 已還原 | — |
+| 延後項：星空隨網址列重抽 | ✅（6d55dd9，第 9 輪實機） | — |
+| 延後項：重點字微調開站就抓 | ✅（b0eb94d） | 微調到手 1,074 ms，在題庫 850 ms 之後 |
+| 延後項：星芒疊加成本 | 本輪量過，在雜訊內 | 同頁 A／B 14.6% 對 14.9% |
+
+第 1 輪 P-01、P-03（測試重跑 PDF）✅ c11fcc6；P-02（PDF 抽字）、P-04（xlsx 非唯讀）、P-05（RTF 逐 token）未動，本輪重列為 P-02、P-04、P-05；P-06、P-07（npm 包裝）不建議，照舊；P-08（字型 858 KB）✅ 214e4dd；P-09（星空每幀）✅ cf0db1f、a26325d。
+
+### 熱點清單
+
+優先級判準是「使用者實際等待時間 × 發生頻率」。本輪每個有線的入口都在使用者的線內，正表列的是佔比 5% 以上、改了會縮短實際等待的項目；沒有非做不可的。
+
+| 編號 | 熱點 | 所屬進入點 | 實測中位數／最大值 | 取樣次數 | 佔該進入點總時間比例 | 使用者感覺得到嗎（等待 × 頻率） | 疑似原因 | 建議改法 | 預估改善幅度 | 改動風險 | 要不要開宿主 | 狀態 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P-01 | Corruption 類 7 條破壞型測試，每條重新解析 RTF 與兩份 xlsx | unittest；同時是 run_gate「Python 測試」步驟（32.20 s，92.4%）的主體 | 27.77 s／27.93 s | 5 | 86.2% | 感覺得到：改 tools 後等 32 s、交付前等 35 s，都在 60 s 線內 | `tests/test_convert.py:206-210` 每條 setUp 複製 4 檔 8.6 MB；`:243-297` 6 條各跑 `convert.build(tmp)`，各重跑 read_rtf 0.56 s＋兩份 read_xlsx 1.38 s；`_edit_xlsx`（`:214-218`）再 load＋save 一次。第 2 輪只快取了 PDF | 比照第 2 輪的 PDF 快取：以檔案內容雜湊為鍵快取 `read_rtf`、`read_xlsx` 的結果（深複製回傳），只有真的改了那份檔的那條才重新解析 | 📌 推算省 10–14 s（RTF 7 → 2 次、xlsx 14 → 8 次）；改完用同一腳本重量才算數 | 中：快取鍵必須含內容，否則破壞型測試讀到未破壞的快取而假綠；要重做 `test_rtf_answer_changed_on_disk_is_caught_by_pdf` 與 xlsx 三條的陽性對照 | 否 | 已量 |
+| P-02 | `read_pdf_answers` 用 pypdf 逐頁抽字 | convert | 6.27 s／6.35 s | 5 | 69.2% | convert 9.06 s 在 12 s 線內；換版才跑 | `tools/official.py:105` 對 244 頁做完整 `extract_text()`，其實只要每題第一行的「編號＋答案」。⚠️ 本機 pypdf 6.12.1，CI 與 requirements 是 6.19.0 | 第一步零改動：`pip install -r requirements.txt` 換到 6.19.0 後用同一腳本重量，確認本機與 CI 同速；之後再評估 pypdf 的其他抽字模式。換抽字套件屬新增相依，要先問 | 未知 | 中：PDF 是交叉核對的第二來源，抽法一變要重做「RTF 改答案會被 PDF 抓到」的陽性對照 | 否 | 已量 |
+| P-03 | `subset_font` 四次子集化 | build_fonts.py --check | 400 ui 3.19／3.20 s、400 bank 4.83／4.85 s、700 ui 3.05／3.08 s、700 bank 4.71／4.74 s | 5 | 合計 97.9% | 感覺得到：16 s，在 30 s 線內；改題庫或介面文字才跑 | `tools/build_fonts.py:93-125` 每個涵蓋切片各建 `TTFont` → `Subsetter` → save，再 `Merger` 合併；同一粗細的切片檔被 ui 與 bank 各解析一次；bank 915 字比 ui 700 字多 1.6 s | 同一粗細一次載入切片、兩個子集共用解析結果；切片解析與子集化的佔比要先拆開再決定 | 未知（沒拆） | 低～中：輸出要逐位元組相同（`--check` 與 `tests/test_fonts.py` 守） | 否 | 已量 |
+| P-04 | 是非題 xlsx 用 openpyxl 一般模式載入 | convert；Corruption 每條再各一次 | 1.07 s／1.11 s | 5 | 11.8% | 不太會：在線內；併入 P-01 的重跑次數 | `tools/xlsx_bank.py:94` `load_workbook` 沒開 `read_only`（第 1 輪 P-04 未動） | `read_only=True` | 未知（📌 沒量過） | 低～中：唯讀模式的 cell 少部分屬性，`xlsx_bank.py:114` 的 `row[0].row` 要先驗 | 否 | 已量 |
+| P-05 | `read_rtf` 正則逐 token 解析 6.88 MB | convert；Corruption 每條再各一次 | 557.6 ms／560.0 ms | 5 | 6.2% | 不會 | `tools/official.py:22-49`（第 1 輪 P-05 未動） | 不動解析器，靠 P-01 的快取避免重跑 | — | 中：主來源解析器 | 否 | 已量 |
+| P-06 | 按「開始練習」出卡時的最長一幀 | 開始練習 | 36 ms（📌 手機乘 4 約 150 ms） | 5 | 量不到（GPU 緒） | 可能：每次開始練習一次、卡一下 | 第 7 輪 trace 已查明是卡片兩面第一次點陣化，成本在 GPU 執行緒；去流光、去符文、藏背面都要改外觀或重現翻卡 90° 頓點 | 不改外觀下沒有剩餘做法；保留觀察，實機看得出來再議 | — | — | 瀏覽器 | 已量（代量） |
+
+#### 建議先做的三項（都不是必須）
+
+1. P-01：唯一會縮短使用者每天等待的項目（改 tools 後 32 s、交付前 35 s），做法已有第 2 輪 PDF 快取的範本，風險在快取鍵。
+2. P-02 的第一步：換到 requirements 釘的 pypdf 6.19.0 重量，零程式碼改動，先確認本機與 CI 的 convert 成本是同一回事。
+3. P-03：30 s 線還有 14 s 餘裕、改字才跑，優先度最低；要做先拆「切片解析」與「子集化」的佔比。
+
+#### 不值得做
+
+1. `npm run` 包裝 367 ms 與 node 啟動 392 ms 佔 npm test 83%：使用者對 npm test 沒有要求；CI 與文件都用 `npm test`。
+2. npm run build 的 npm／node 啟動 1.27 s（77.8%）：沒有要求。
+3. 首頁字型 ui 兩檔 268 KB、1.525 s 到手：在「按開始前到手」的線內；700 粗細那檔 136 KB 要省就得改外觀（合成粗體）。
+4. 重點字微調 chunk gzip 18 KB、1.074 s 到手：在線內；比第 3 輪記的 26 KB 原始大 2.6 倍是 6af33bd 加了 1,027 段線索，內容不是效能問題。
+5. 星芒 `.star`（drop-shadow＋無限動畫，3,599 題標到 3,582 處）：同頁 A／B 14.6% 對 14.9%，在雜訊內。
+6. unittest 其他類：Output 4.4%、HighlightCheck 2.6%＋ReviewChecks 2.2%（9 個子行程）、探索與 setUpClass 3.2%、Fonts 0.1%；都不到 5%。
+7. convert 其他段：import convert 3.3%、選擇題 xlsx 3.4%、子行程其餘 2.0%、import pypdf 1.1%、build 其餘 0.9%，各不到 5%。
+8. 網站純邏輯（Node 代量）：重點字 `segments()` 每題 0.003 ms、全部 3,599 題 13.3 ms；出題 0.22 ms、stats 0.10 ms、save 1.0 ms、load 1.3 ms、首頁 15 列 5.1 ms；乘 4 後最大的約 21 ms。
+9. 翻卡、下一題：超過預算 0 格；星空每幀與首頁閒置 4.6%：已在第 3、5、6 輪處理。
+10. 首屏關鍵路徑 gzip 31 KB（第 1 輪 29 KB）：多的是重點字邏輯，開站 0.544 s 在線內。
+
+#### 量不到的部分
+
+1. 手機實機：無頭 Chrome 跑的是桌機 GPU，CPU 4 倍降速不等於手機；GPU 與合成緒的時間頁內拿不到；發燙與耗電只能實機看。替代判斷：照第 1 輪〈量不到的部分〉第 2 條與第 3 輪的實機步驟，由使用者在 Android 上 `chrome://inspect` 錄 Performance。
+2. 螢幕 162–165 Hz 的幀預算 9.1 ms 比手機 16.7 ms 嚴，掉幀「0 格」在手機上只會更寬，但絕對幀時間不能直接換算。
+3. 第 3／6 輪 pane 上的指標本輪沒重量（量法改以腳本為正本），pane 與無頭的差異只有第 3／4 輪那一組可對照（29.1% 對 29.8%）。
+4. CI 時間只讀 GitHub 回報的紀錄，沒有在本機重現 ubuntu runner。
+5. pypdf 6.19.0 下的 convert 成本：本機沒裝，見 P-02。

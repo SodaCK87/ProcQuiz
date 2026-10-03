@@ -10,6 +10,12 @@
 //   visual     外觀比對：固定亂數、凍結動畫、藏掉星空後截圖，比兩個網址（或兩組 CSS）的像素差，另截一張當對照
 //   fonts      首頁與出卡後各抓了哪些字型檔、多少位元組
 //   trace      錄按「開始練習」前後 400 ms 的 trace，依執行緒列出最耗時的事件
+//   load       開站（第 10 輪起）：每次關快取重新載入，記 TTFB、FCP、LCP、「開始練習」可按、題庫／微調／字型到手的時間與各資源傳輸量；
+//              --net fast4g 用 CDP 模擬 Fast 4G（下行 1,012,500 B/s、上行 168,750 B/s、每請求 165 ms，取自 Chromium NetworkManager.ts），配 --cpu 4
+//   next       按「下一題」（第 10 輪起）：作答後按下一題，量 1.5 s 內超過預算的幀；變體同 flip-idle，交錯進行
+//
+// 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
+// Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
 //
 // --variants 例：'{"現況":"","拿掉暫停":".dormant::before,.dormant *{animation-play-state:running!important}"}'
 // 主緒佔用的量法：連續排 1 ms 的忙迴圈，數排進幾塊，佔用率＝1－排進的毫秒數÷總時間；含樣式、版面、繪製記錄，不含 GPU。
@@ -17,17 +23,47 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createServer } from 'node:http';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { extname, normalize, resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace> <網址[,網址2]> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : null; };
+
+/* ---------- serve:<dir>：腳本內建的靜態伺服器（第 10 輪起） ---------- */
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const servers = [];
+async function serveDir(dir){
+  const root = resolve(dir);
+  if (!existsSync(join(root, 'index.html'))){ console.error(`serve:${dir} 底下沒有 index.html；先 npm run build`); process.exit(2); }
+  const srv = createServer((req, res) => {
+    let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    if (p.endsWith('/')) p += 'index.html';
+    const file = normalize(join(root, p));
+    if (!file.startsWith(root) || !existsSync(file) || !statSync(file).isFile()){ res.writeHead(404); res.end(); return; }
+    const type = MIME[extname(file)] ?? 'application/octet-stream';
+    let body = readFileSync(file);
+    const headers = { 'Content-Type': type, 'Cache-Control': 'max-age=600' };
+    // GitHub Pages 對文字資源回 gzip；woff2 本身已壓縮，原樣送
+    if (/^(text\/|application\/json)/.test(type) && /gzip/.test(req.headers['accept-encoding'] ?? '')){ body = gzipSync(body, { level: 6 }); headers['Content-Encoding'] = 'gzip'; }
+    headers['Content-Length'] = body.length;
+    res.writeHead(200, headers); res.end(body);
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  servers.push(srv);
+  return `http://127.0.0.1:${srv.address().port}/`;
+}
+for (let i = 0; i < urls.length; i++) if (urls[i].startsWith('serve:')) urls[i] = await serveDir(urls[i].slice(6));
 
 /* ---------- Chrome 與 CDP ---------- */
 const prof = mkdtempSync(join(tmpdir(), 'pqz-cdp-')), port = 9333 + Math.floor(Math.random() * 500);
@@ -47,7 +83,7 @@ async function ev(expr){
   if (r.result?.exceptionDetails) throw new Error(JSON.stringify(r.result.exceptionDetails).slice(0, 300));
   return r.result?.result?.value;
 }
-function finish(out){ console.log(JSON.stringify(out, null, 1)); ws.close(); chrome.kill(); setTimeout(() => { try { rmSync(prof, { recursive: true, force: true }); } catch {} process.exit(0); }, 500); }
+function finish(out){ console.log(JSON.stringify(out, null, 1)); ws.close(); chrome.kill(); for (const s of servers) s.close(); setTimeout(() => { try { rmSync(prof, { recursive: true, force: true }); } catch {} process.exit(0); }, 500); }
 
 /* ---------- 頁內工具 ---------- */
 const HELPERS = `
@@ -153,3 +189,58 @@ if (mode === 'trace'){
   finish({ 前8幀: frames, 最耗時: Object.entries(agg).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => `${v.toFixed(1)} ms  ${k}`) });
 }
 
+if (mode === 'load'){
+  // 開站（第 10 輪起）：每次關掉快取重新載入，像第一次來的手機。「可按」＝「開始練習」按鈕第一次出現且沒有 disabled 的時刻，
+  // 由在文件建立前就注入的 MutationObserver 記下；LCP 用 PerformanceObserver（buffered）。第一次載入當 warmup 不計
+  const net = opt('net', 'none');
+  const NETS = { fast4g: { latency: 165, downloadThroughput: 1012500, uploadThroughput: 168750 }, none: null };
+  if (!(net in NETS)){ console.error(`不認得的 --net ${net}；可用 ${Object.keys(NETS).join('、')}`); process.exit(2); }
+  await send('Network.enable');
+  await send('Network.setCacheDisabled', { cacheDisabled: true });
+  if (NETS[net]) await send('Network.emulateNetworkConditions', { offline: false, ...NETS[net] });
+  await send('Emulation.setCPUThrottlingRate', { rate: CPU });
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    window.__ready = null; window.__lcp = null;
+    new PerformanceObserver(l => { for (const e of l.getEntries()) window.__lcp = e.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
+    // 這段在文件建立前就跑，documentElement 還是 null，只能 observe(document)
+    new MutationObserver((_, o) => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === '開始練習' && !b.disabled);
+      if (b){ window.__ready = performance.now(); o.disconnect(); } }).observe(document, { childList: true, subtree: true, attributes: true });` });
+  const trials = [];
+  for (let t = 0; t < TRIALS + 1; t++){
+    await send('Page.navigate', { url: `${urls[0]}?t=${t}` });
+    await sleep(500);
+    // 等字型檔到手且 document.fonts 載完（最多 30 s）：慢網路下開站後 3–5 s 才會全到
+    await ev(`(async()=>{ for (let i=0;i<60;i++){ if (performance.getEntriesByType('resource').some(e=>/\\.woff2$/.test(e.name)) && document.fonts.status==='loaded') break; await new Promise(r=>setTimeout(r,500)); } await new Promise(r=>setTimeout(r,500)); return 1; })()`);
+    const r = await ev(`(()=>{ const nav = performance.getEntriesByType('navigation')[0] ?? {}; const res = performance.getEntriesByType('resource');
+      const paint = Object.fromEntries(performance.getEntriesByType('paint').map(e => [e.name, e.startTime]));
+      const end = re => { const v = res.filter(e => re.test(e.name)).map(e => e.responseEnd); return v.length ? Math.max(...v) : null; };
+      const bytes = re => res.filter(e => re.test(e.name)).reduce((a, e) => a + e.encodedBodySize, 0);
+      return { TTFB: nav.responseStart, HTML到手: nav.responseEnd, DCL: nav.domContentLoadedEventEnd, FCP: paint['first-contentful-paint'], LCP: window.__lcp, 可按: window.__ready,
+        題庫到手: end(/true-false-.*\\.js$/), 微調到手: end(/highlight-fixes-.*\\.js$/), 字型CSS到手: end(/fonts-.*\\.css$/), 字型檔到手: end(/\\.woff2$/),
+        傳輸: { HTML: nav.encodedBodySize, 入口JS: bytes(/index-.*\\.js$/), 入口CSS: bytes(/index-.*\\.css$/), 題庫: bytes(/true-false-.*\\.js$/), 微調: bytes(/highlight-fixes-.*\\.js$/),
+          字型CSS: bytes(/fonts-.*\\.css$/), 字型檔: bytes(/\\.woff2$/), 字型檔數: res.filter(e => /\\.woff2$/.test(e.name)).length } }; })()`);
+    if (t > 0) trials.push(r);
+  }
+  const keys = ['TTFB', 'HTML到手', 'FCP', 'LCP', 'DCL', '可按', '題庫到手', '微調到手', '字型CSS到手', '字型檔到手'];
+  const summary = Object.fromEntries(keys.map(k => { const v = trials.map(r => r[k]).filter(x => x != null); return [k, v.length ? { 中位數: Math.round(med(v)), 最大: Math.round(Math.max(...v)), 次數: v.length } : null]; }));
+  finish({ cpu: CPU, net, trials: trials.length, summary, 傳輸: trials[0]?.傳輸, each: trials.map(r => Object.fromEntries(keys.map(k => [k, r[k] == null ? null : Math.round(r[k])]))) });
+}
+
+if (mode === 'next'){
+  // 按「下一題」（第 10 輪起）：卡片若在正面就先作答、等翻卡落定，再按「下一題」量 1.5 s 內的幀（換卡動畫 300＋380 ms 含在內）
+  await open(urls[0]);
+  const fps = (await ev('__fr(2000)')).length / 2, budget = 1.5 * 1000 / fps;
+  await send('Emulation.setCPUThrottlingRate', { rate: CPU });
+  await startQuiz();
+  const NEXT = `(async () => { if (!__find('下一題')){ (__find('O') || __find('1')).click(); await new Promise(r => setTimeout(r, 1400)); }
+    const p = __fr(1500); __find('下一題').click(); const iv = await p; await new Promise(r => setTimeout(r, 300)); return iv; })()`;
+  await ev(NEXT);
+  const names = Object.keys(VARIANTS), out = Object.fromEntries(names.map(k => [k, []]));
+  for (let t = 0; t < TRIALS; t++) for (const k of (t % 2 ? [...names].reverse() : names)){
+    await ev(`__style(${JSON.stringify(VARIANTS[k])})`); await sleep(200);
+    const iv = await ev(NEXT), big = iv.filter(x => x > budget);
+    out[k].push({ frames: iv.length, over: big.length, overMs: Math.round(big.reduce((a, b) => a + b, 0)), worst: Math.round(Math.max(...iv)) });
+  }
+  finish({ fps, cpu: CPU, budgetMs: +budget.toFixed(1), summary: Object.fromEntries(names.map(k => [k, {
+    下一題超過預算格數: med(out[k].map(r => r.over)), 下一題超過預算毫秒: med(out[k].map(r => r.overMs)), 最長一幀: med(out[k].map(r => r.worst)) }])), each: out });
+}
