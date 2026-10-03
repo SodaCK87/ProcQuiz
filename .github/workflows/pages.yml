@@ -38,6 +38,11 @@ jobs:
         working-directory: web
       # 與本機交付前跑的是同一支：Python 測試（含已提交的題庫 JSON 等於重跑結果）、網站測試、建置
       - run: python tools/run_gate.py
+      # 相依弱點（全面盤點 D-03）：版本釘死之後出新弱點沒人知道。兩個都要連網查資料庫，放 CI 不放本機把關；查到就不發布，
+      # 修法是升版後重跑測試（pypdf 6.19.0 就是這樣升的）。pip-audit 只是 CI 的工具，不進 requirements.txt
+      - run: pip install pip-audit && python -m pip_audit --disable-pip --no-deps -r requirements.txt
+      - run: npm audit --audit-level=high
+        working-directory: web
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
