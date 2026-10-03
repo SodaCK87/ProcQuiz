@@ -61,7 +61,8 @@
   .lbl{letter-spacing:.2em;color:var(--gold-mid);font-size:14px}
   .seg{display:flex;border:1px solid var(--gold);border-radius:999px;overflow:hidden}
   .seg button{flex:1;padding:6px 10px;border:0;cursor:pointer;background:rgba(20,14,8,.6);color:var(--page-ink-2);font-size:15px}
-  .seg button[aria-pressed="true"]{background:linear-gradient(180deg,#b8913f,#8f6c2a);color:#1a1208;font-weight:700}
+  /* 漸層下半原為 #8f6c2a，深字壓上去對比 3.9；改 #a37f36 過 4.5（PQZ-08） */
+  .seg button[aria-pressed="true"]{background:linear-gradient(180deg,#b8913f,#a37f36);color:#1a1208;font-weight:700}
   .courses{display:grid;gap:8px}
   .course{
     display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;cursor:pointer;

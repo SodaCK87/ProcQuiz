@@ -15,6 +15,8 @@
 //   next       按「下一題」（第 10 輪起）：作答後按下一題，量 1.5 s 內超過預算的幀；變體同 flip-idle，交錯進行
 //   contrast   文字對比（全面盤點 A-02、PQZ-08）：選題頁、卡面正面（故意答錯後翻回）、卡面背面的文字元素，藏字截框逐像素算 WCAG 對比，
 //              報最低值、中位數、低於門檻的面積比例；門檻一般字 4.5、大字 3；第一個變體有任一項低於門檻面積超過 --max-below（預設 5%）就退出 1
+//   errors     全域錯誤攔截（全面盤點 B-03）：平常不該有 .fatal；頁內故意擲一個沒 catch 的例外、另開一頁留一個沒處理的 rejection，
+//              都要出現帶版本、commit 與回報連結的 .fatal，否則退出 1
 //
 // 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
 // Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
@@ -33,8 +35,8 @@ import { gzipSync } from 'node:zlib';
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
@@ -278,19 +280,21 @@ if (mode === 'contrast'){
     el.scrollIntoView({ block: 'center', inline: 'nearest' });
     const cs = getComputedStyle(el), m = cs.color.match(/[\\d.]+/g).map(Number); let op = 1; for (let n = el; n; n = n.parentElement) op *= parseFloat(getComputedStyle(n).opacity);
     const size = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight) >= 700, large = size >= 24 || (size >= 18.66 && bold);
-    el.classList.add('__ct'); const r = el.getBoundingClientRect();
-    // 只截內容框：邊框與 padding 不是字所在的地方，按鈕的金色邊框與字同色會被算成對比 1
+    el.classList.add('__ct');
+    // 只截內容框：邊框與 padding 不是字所在的地方，按鈕的金色邊框與字同色會被算成對比 1。
+    // inline 元素（mark、span）跨行時 union 框會把鄰字（亮色正文）框進來而算成對比 1，改逐行片段各截一塊
     const [t, rt, b, l] = ['Top', 'Right', 'Bottom', 'Left'].map(s => parseFloat(cs['border' + s + 'Width']) + parseFloat(cs['padding' + s]));
+    const boxes = cs.display === 'inline' ? [...el.getClientRects()] : [el.getBoundingClientRect()];
     return { rgb: m.slice(0, 3), alpha: (m[3] ?? 1) * op, size, threshold: large ? 3 : 4.5, text: el.textContent.trim().slice(0, 12),
-      rect: { x: r.left + l + ${pageClip ? 'scrollX' : 0}, y: r.top + t + ${pageClip ? 'scrollY' : 0}, width: r.width - l - rt, height: r.height - t - b } }; }`;
-  const STATS = `async (png, rgb, alpha, threshold) => { const img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = 'data:image/png;base64,' + png; });
+      rects: boxes.map(r => ({ x: r.left + l + ${pageClip ? 'scrollX' : 0}, y: r.top + t + ${pageClip ? 'scrollY' : 0}, width: r.width - l - rt, height: r.height - t - b })).filter(r => r.width >= 1 && r.height >= 1) }; }`;
+  const STATS = `async (png, rgb, alpha, threshold, last = true) => { const img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = 'data:image/png;base64,' + png; });
     const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height).data, f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }, lum = (r, g2, b) => .2126 * f(r) + .7152 * f(g2) + .0722 * f(b);
     const ratios = new Float32Array(d.length / 4); let below = 0;
     for (let k = 0, j = 0; k < d.length; k += 4, j++){ const br = d[k], bg = d[k + 1], bb = d[k + 2];
       const l1 = lum(rgb[0] * alpha + br * (1 - alpha), rgb[1] * alpha + bg * (1 - alpha), rgb[2] * alpha + bb * (1 - alpha)), l2 = lum(br, bg, bb);
       const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05); ratios[j] = ratio; if (ratio < threshold) below++; }
-    ratios.sort(); document.querySelectorAll('.__ct').forEach(e => e.classList.remove('__ct'));
+    ratios.sort(); if (last) document.querySelectorAll('.__ct').forEach(e => e.classList.remove('__ct'));
     return { pixels: ratios.length, min: +ratios[0].toFixed(2), median: +ratios[ratios.length >> 1].toFixed(2), below }; }`;
   async function measure(selectors){
     const out = {};
@@ -299,11 +303,15 @@ if (mode === 'contrast'){
       for (let i = 0; i < 8; i++){
         const p = await ev(`(${PREP})(${JSON.stringify(sel)}, ${i})`);
         if (!p) break;
-        if (p.rect.width < 1 || p.rect.height < 1){ await ev(`document.querySelectorAll('.__ct').forEach(e=>e.classList.remove('__ct'))`); continue; }
+        if (!p.rects.length){ await ev(`document.querySelectorAll('.__ct').forEach(e=>e.classList.remove('__ct'))`); continue; }
         await sleep(30);
-        const shot = (await send('Page.captureScreenshot', { format: 'png', clip: { ...p.rect, scale: 1 } })).result.data;
-        const s = await ev(`(${STATS})(${JSON.stringify(shot)}, ${JSON.stringify(p.rgb)}, ${p.alpha}, ${p.threshold})`);
-        acc.elements++; acc.pixels += s.pixels; acc.below += s.below; acc.min = Math.min(acc.min, s.min); acc.medians.push(s.median); acc.threshold = p.threshold; acc.sample ||= p.text;
+        let pixels = 0, below = 0, min = Infinity; const meds = [];
+        for (const rect of p.rects){
+          const shot = (await send('Page.captureScreenshot', { format: 'png', clip: { ...rect, scale: 1 } })).result.data;
+          const s = await ev(`(${STATS})(${JSON.stringify(shot)}, ${JSON.stringify(p.rgb)}, ${p.alpha}, ${p.threshold}, ${rect === p.rects.at(-1)})`);
+          pixels += s.pixels; below += s.below; min = Math.min(min, s.min); meds.push(s.median);
+        }
+        acc.elements++; acc.pixels += pixels; acc.below += below; acc.min = Math.min(acc.min, min); acc.medians.push(med(meds)); acc.threshold = p.threshold; acc.sample ||= p.text;
       }
       // 同一選擇器多個元素時：最低取全部最低、面積比例合計、中位取最差那個元素的中位（取整體中位會被好的元素蓋掉）
       if (acc.elements) out[sel] = { 元素: acc.elements, 門檻: acc.threshold, 最低: acc.min, 最差元素中位: Math.min(...acc.medians), 低於門檻面積pct: +(100 * acc.below / acc.pixels).toFixed(1), 例: acc.sample };
@@ -349,4 +357,19 @@ if (mode === 'contrast'){
   await card('選擇題', 'multiple-choice');
   finish({ 規則: `門檻：一般字 4.5、大字（≥24px 或 ≥18.66px 粗體）3；低於門檻面積超過 ${MAX_BELOW}% 判紅；卡面在 ${CARD_TIMES.join('、')} ms 凍結各量一次取最差；星空藏掉`,
     截圖座標: pageClip ? '文件' : '視窗', 紅: fails, 通過: fails.length === 0, 結果: result }, fails.length ? 1 : 0);
+}
+
+if (mode === 'errors'){
+  // 全域錯誤攔截（B-03）：web/src/lib/fatal.js 掛在 window 上。平常不該有提示；故意擲錯與故意留下沒處理的 rejection 都要出現 .fatal
+  const read = `(()=>{ const f=document.querySelector('.fatal'); return f ? { 文字: f.textContent.slice(0, 140), 有版本: /v\\d+\\.\\d+\\.\\d+（[0-9a-f]{7,}）/.test(f.textContent), 有連結: !!f.querySelector('a[href*="issues"]') } : null; })()`;
+  const out = {};
+  await open(urls[0], 2500);
+  out.平常 = await ev(`document.querySelectorAll('.fatal').length`);
+  await ev(`setTimeout(() => { throw new Error('探針：故意擲錯'); }, 0); 1`); await sleep(400);
+  out.擲錯後 = await ev(read);
+  await open(`${urls[0]}?r=1`, 2500);
+  await ev(`Promise.reject(new Error('探針：沒處理的 rejection')); 1`); await sleep(400);
+  out.rejection後 = await ev(read);
+  const ok = out.平常 === 0 && out.擲錯後?.有版本 && out.擲錯後?.有連結 && /故意擲錯/.test(out.擲錯後?.文字 ?? '') && /沒處理的 rejection/.test(out.rejection後?.文字 ?? '');
+  finish({ 通過: !!ok, ...out }, ok ? 0 : 1);
 }
