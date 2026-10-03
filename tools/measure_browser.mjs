@@ -17,6 +17,8 @@
 //              報最低值、中位數、低於門檻的面積比例；門檻一般字 4.5、大字 3；第一個變體有任一項低於門檻面積超過 --max-below（預設 5%）就退出 1
 //   errors     全域錯誤攔截（全面盤點 B-03）：平常不該有 .fatal；頁內故意擲一個沒 catch 的例外、另開一頁留一個沒處理的 rejection，
 //              都要出現帶版本、commit 與回報連結的 .fatal，否則退出 1
+//   storage    紀錄存不進去的提示（全面盤點 A-04）：正常作答後不該有 [role=alert]；把 Storage.prototype.setItem 換成擲 QuotaExceededError 再作答，
+//              要出現提到「紀錄」的提示且不是全域錯誤提示，否則退出 1
 //
 // 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
 // Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
@@ -35,8 +37,8 @@ import { gzipSync } from 'node:zlib';
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
@@ -371,5 +373,22 @@ if (mode === 'errors'){
   await ev(`Promise.reject(new Error('探針：沒處理的 rejection')); 1`); await sleep(400);
   out.rejection後 = await ev(read);
   const ok = out.平常 === 0 && out.擲錯後?.有版本 && out.擲錯後?.有連結 && /故意擲錯/.test(out.擲錯後?.文字 ?? '') && /沒處理的 rejection/.test(out.rejection後?.文字 ?? '');
+  finish({ 通過: !!ok, ...out }, ok ? 0 : 1);
+}
+
+if (mode === 'storage'){
+  // 紀錄存不進去的提示（A-04）：App.svelte 的 flush 把 saveWithNotice 的回傳接到 [role=alert]。存檔延到閒置（最多 1 秒）才做，作答後等 1.8 秒再讀
+  const read = `[...document.querySelectorAll('[role=alert]')].map(e => e.textContent.trim())`;
+  const answer = `(() => { const b = __find('O') || __find('1'); if (!b) return false; b.click(); return true; })()`;
+  const out = {};
+  await open(urls[0], 2500); await startQuiz();
+  out.正常作答 = await ev(answer); await sleep(1800);
+  out.正常作答後 = await ev(read);
+  await open(`${urls[0]}?r=1`, 2500);
+  await ev(`Object.defineProperty(Storage.prototype, 'setItem', { value(){ throw new DOMException('探針：儲存空間滿', 'QuotaExceededError'); } }); 1`);
+  await startQuiz();
+  out.失敗作答 = await ev(answer); await sleep(1800);
+  out.存檔失敗後 = await ev(read);
+  const ok = out.正常作答 && out.失敗作答 && out.正常作答後.length === 0 && out.存檔失敗後.some(t => /紀錄/.test(t)) && !out.存檔失敗後.some(t => /網頁出了錯/.test(t));
   finish({ 通過: !!ok, ...out }, ok ? 0 : 1);
 }

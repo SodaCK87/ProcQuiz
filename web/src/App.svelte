@@ -4,7 +4,7 @@
   import StartScreen from './components/StartScreen.svelte';
   import { start as startStars } from './lib/starfield.js';
   import { bakeTextures } from './lib/textures.js';
-  import { load, save, record, markGuess, stats, isWrong, MASTER } from './lib/progress.js';
+  import { load, saveWithNotice, record, markGuess, stats, isWrong, MASTER } from './lib/progress.js';
   import { pool, pick, deckKey } from './lib/deck.js';
   import { loadOn, saveOn } from './lib/highlight.js';
   import { ISSUES } from './lib/fatal.js';
@@ -24,6 +24,7 @@
   let kind = $state('true-false'), course = $state(0), mode = $state('all');
   let deck = $state.raw(null);     // { key, cur, recent, mixed }：目前這題、最近出過的題號、是否為錯題模式穿插的題目
   let loadError = $state('');
+  let saveError = $state('');     // 紀錄存不進去時的提示，下一次存成功就清掉
   let starting = $state(false);    // 按了開始，題庫還在下載
   let marks = $state(loadOn());     // 題目重點字開關
   let fixes = $state.raw({});       // 重點字逐題微調，題庫到了才下載，不跟題庫搶頻寬
@@ -65,7 +66,7 @@
   // 存檔延到閒置時：作答當下要先讓翻卡第一格出來，整份紀錄 stringify 加寫入不擋在點擊裡；離開頁面前一定寫完
   let saveQueued = false;
   const idle = globalThis.requestIdleCallback ?? (f => setTimeout(f, 200));
-  function flush(){ if (saveQueued){ saveQueued = false; save(progress); } }
+  function flush(){ if (saveQueued){ saveQueued = false; saveError = saveWithNotice(progress); } }
   function persist(){ rev++; if (!saveQueued){ saveQueued = true; idle(flush, { timeout: 1000 }); } }
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
@@ -120,6 +121,7 @@
     <p class="hint" role="note">你正在 LINE 裡開這個網頁，練習紀錄可能保不住。請點右上角選單，改用 Chrome 或 Safari 開啟。</p>
   {/if}
   {#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
+  {#if saveError}<p class="hint" role="alert">{saveError}</p>{/if}
 
   {#if view === 'start'}
     <StartScreen bind:kind bind:course bind:mode index={INDEX[kind]} {progress} {rev} {starting} onstart={begin} />

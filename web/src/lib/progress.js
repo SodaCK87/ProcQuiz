@@ -1,4 +1,4 @@
-// 練習紀錄只存在這台裝置的瀏覽器；讀寫失敗（無痕模式、被封鎖）就當成沒有紀錄，網站照常能用
+// 練習紀錄只存在這台裝置的瀏覽器；讀寫失敗（無痕模式、被封鎖）就當成沒有紀錄，網站照常能用，存不進去時畫面提示一句
 
 const KEY = 'pqz:progress:v1';
 
@@ -22,6 +22,13 @@ export function load(storage = globalThis.localStorage){
 
 export function save(p, storage = globalThis.localStorage){
   try { storage.setItem(KEY, JSON.stringify(p)); return true; } catch { return false; }
+}
+
+/** 存檔並回傳要給使用者看的提示：存不進去是一句中文，存進去是空字串（下一次存成功就收掉提示）。
+ *  寫不進去時畫面統計照常變，不提示的話會以為有記到、下次回來紀錄全沒了（全面盤點 A-04） */
+export const SAVE_FAILED = '練習紀錄存不進這台裝置（無痕模式、儲存空間滿或被封鎖），這次的作答不會被記住。';
+export function saveWithNotice(p, storage = globalThis.localStorage){
+  return save(p, storage) ? '' : SAVE_FAILED;
 }
 
 /** 連續答對次數；舊紀錄沒有 s：沒錯過就是答對次數，錯過就只知道最近一次 */

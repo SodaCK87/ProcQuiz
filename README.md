@@ -8,8 +8,8 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
-測試：`python -m unittest discover -s tests` 40 條全綠（2026-10-04，本機 Python 3.11.9，約 31 秒；相依先裝 `pip install -r requirements.txt`）；
-網站邏輯 `npm test`（在 `web/`）32 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
+測試：`python -m unittest discover -s tests` 40 條全綠（2026-10-04，本機 Python 3.11.9，約 32 秒；相依先裝 `pip install -r requirements.txt`）；
+網站邏輯 `npm test`（在 `web/`）33 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 
 ## 網站
 
@@ -20,6 +20,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單、背景星圖、題目重點字、卡面樣式規則順序、全域錯誤提示的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
 4. 對比探針：建置後在 repo 根目錄 `node tools/measure_browser.mjs contrast serve:web/dist`，用無頭 Chrome 量選題頁與卡面文字對實際底色的 WCAG 對比（一般字 4.5、大字 3，卡面在 5 個動畫時間點取最差），任一處低於門檻的面積超過 5% 就退出非零。2026-10-03 調色後退出 0（PQZ-08 已修）；改任何顏色、紋理或動畫都要重跑。不在 `run_gate.py` 裡，要本機 Chrome。
 5. 全域錯誤提示：沒被 catch 的例外或沒處理的 rejection 會在畫面最上方出中文訊息（帶程式版本、commit 與回報連結），邏輯在 `web/src/lib/fatal.js`、`npm test` 守；`node tools/measure_browser.mjs errors serve:web/dist` 在建置後的網站裡故意擲錯，確認訊息真的出現。
+6. 紀錄存不進去的提示：練習紀錄寫不進 localStorage 時（無痕模式、儲存空間滿、被封鎖），作答後畫面上方提示一句「這次的作答不會被記住」，下一次存成功就收掉；判斷在 `web/src/lib/progress.js` 的 `saveWithNotice`、`npm test` 守，`node tools/measure_browser.mjs storage serve:web/dist` 在建置後的網站把 `setItem` 換成擲例外後作答，確認提示真的出現、正常作答時沒有。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
 
@@ -36,7 +37,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 外觀原型在 `web/prototype/highlight-style.html`。
 
 練習紀錄（每題答對、答錯、猜對與連續答對次數）只存在該裝置瀏覽器的 localStorage，換手機或清除瀏覽資料就沒了；
-讀寫失敗（無痕模式、被封鎖）時網站照常能用，只是不記。外觀定案見路線圖〈視覺風格〉，原型在 `web/prototype/card-style.html`。
+讀寫失敗（無痕模式、儲存空間滿、被封鎖）時網站照常能用，只是不記，作答後畫面上方會提示一句（PQZ-09）。外觀定案見路線圖〈視覺風格〉，原型在 `web/prototype/card-style.html`。
 
 ## 回報問題
 

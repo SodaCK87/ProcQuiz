@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { pool, pick, mulberry32, deckKey, COOLDOWN } from './deck.js';
-import { empty, load, save, record, stats, statsByPrefix, isWrong, isMastered, streak, markGuess, MASTER } from './progress.js';
+import { empty, load, save, saveWithNotice, SAVE_FAILED, record, stats, statsByPrefix, isWrong, isMastered, streak, markGuess, MASTER } from './progress.js';
 import { buildIndex } from './bank-index.js';
 
 const bank = kind => JSON.parse(readFileSync(new URL(`../../../data/questions/${kind}.json`, import.meta.url), 'utf8'));
@@ -123,6 +123,13 @@ test('儲存空間壞掉或被封鎖時不擲例外，回空紀錄', () => {
   assert.equal(save(empty(), broken), false);
   const junk = memStorage(); junk.setItem('pqz:progress:v1', '{not json');
   assert.deepEqual(load(junk), empty());
+});
+
+test('存不進去要有一句提示；存進去或之後存成功就沒有提示（A-04）', () => {
+  const quota = { getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); } };
+  assert.equal(saveWithNotice(empty(), quota), SAVE_FAILED);
+  assert.match(SAVE_FAILED, /不會被記住/);
+  assert.equal(saveWithNotice(empty(), memStorage()), '');
 });
 
 test('舊版紀錄裡「一輪」的位置讀進來就丟掉，作答紀錄保留', () => {
