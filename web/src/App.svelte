@@ -25,7 +25,7 @@
   let loadError = $state('');
   let starting = $state(false);    // 按了開始，題庫還在下載
   let marks = $state(loadOn());     // 題目重點字開關
-  let fixes = $state.raw({});       // 重點字逐題微調，跟題庫一起在背景下載，不佔首頁
+  let fixes = $state.raw({});       // 重點字逐題微調，題庫到了才下載，不跟題庫搶頻寬
   const inLine = /\bLine\//.test(navigator.userAgent);
 
   let bank = $derived(banks[kind] ?? null);
@@ -37,13 +37,18 @@
   // 每個題型只下載一次；首頁一出現就在背景開始抓目前的題型
   const pending = {};
   function ensure(k){
-    pending[k] ??= LOADERS[k]().then(m => { banks = { ...banks, [k]: m.default }; loadFonts(); },
+    pending[k] ??= LOADERS[k]().then(m => { banks = { ...banks, [k]: m.default }; loadFonts(); loadFixes(); },
       () => { delete pending[k]; loadError = '題庫下載失敗，請檢查網路後再按一次開始。'; throw new Error('load'); });
     return pending[k];
   }
   $effect(() => { ensure(kind).catch(() => {}); });
   // 沒下載到就只用規則標記，不影響作答
-  import('./lib/highlight-fixes.json').then(m => { fixes = m.default; }, () => {});
+  let fixesRequested = false;
+  function loadFixes(){
+    if (fixesRequested) return;
+    fixesRequested = true;
+    import('./lib/highlight-fixes.json').then(m => { fixes = m.default; }, () => {});
+  }
 
   // 思源宋體等題庫到了才開始下載：慢網路下字型切片（首頁就要 16 塊、約 700 KB）會跟題庫搶頻寬；
   // 在那之前先用系統內建的明體
