@@ -8,8 +8,8 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
-測試：`python -m unittest discover -s tests` 38 條全綠（2026-10-03，本機 Python 3.11.9，約 34 秒；相依先裝 `pip install -r requirements.txt`）；
-網站邏輯 `npm test`（在 `web/`）29 條全綠（Node 24）。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
+測試：`python -m unittest discover -s tests` 39 條全綠（2026-10-04，本機 Python 3.11.9，約 31 秒；相依先裝 `pip install -r requirements.txt`）；
+網站邏輯 `npm test`（在 `web/`）32 條全綠（Node 24）。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 
 ## 網站
 

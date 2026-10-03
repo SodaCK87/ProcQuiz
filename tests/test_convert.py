@@ -22,20 +22,40 @@ from xlsx_bank import BankError  # noqa: E402
 SRC = ROOT / "data" / "source"
 _built = None
 
-# PDF 抽字一次 6–7 秒，佔整套測試大半，而破壞型測試只改 RTF 與 xlsx。
-# 以檔案內容為鍵快取：PDF 一被改動就重抽，不會拿舊結果蓋過破壞
-_pdf_cache = {}
-_read_pdf = official.read_pdf_answers
+# 三份來源的解析各要 0.6–6 秒，佔整套測試大半，而每條破壞型測試只動其中一份。
+# 以檔案內容雜湊為鍵快取：檔一被改動就重新解析，不會拿舊結果蓋過破壞（第 2 輪快取 PDF，第 11 輪加 RTF 與 xlsx）
+_pdf_cache, _rtf_cache, _xlsx_cache = {}, {}, {}
+_read_pdf, _read_rtf, _read_xlsx = official.read_pdf_answers, official.read_rtf, xlsx_bank.read_xlsx
+
+
+def _digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def _cached_pdf(path, course_names):
-    key = (hashlib.sha256(Path(path).read_bytes()).hexdigest(), frozenset(course_names))
+    key = (_digest(path), frozenset(course_names))
     if key not in _pdf_cache:
         _pdf_cache[key] = _read_pdf(path, course_names)
     return copy.deepcopy(_pdf_cache[key])
 
 
+def _cached_rtf(path):
+    key = _digest(path)
+    if key not in _rtf_cache:
+        _rtf_cache[key] = _read_rtf(path)
+    return copy.deepcopy(_rtf_cache[key])
+
+
+def _cached_xlsx(kind, path):
+    key = (kind, _digest(path))
+    if key not in _xlsx_cache:
+        _xlsx_cache[key] = _read_xlsx(kind, path)
+    return copy.deepcopy(_xlsx_cache[key])
+
+
 official.read_pdf_answers = convert.read_pdf_answers = _cached_pdf
+official.read_rtf = convert.read_rtf = _cached_rtf
+xlsx_bank.read_xlsx = convert.read_xlsx = _cached_xlsx
 
 
 def built():
@@ -229,6 +249,32 @@ class OfficialCrossCheck(unittest.TestCase):
             p.write_bytes((SRC / "official.pdf").read_bytes()[:4096])
             with self.assertRaises(Exception):
                 official.read_pdf_answers(p, names)
+
+
+class SourceCache(unittest.TestCase):
+    """守上面的 RTF 與 xlsx 快取：同一路徑的檔內容一改就要重新解析。鍵若只看路徑，改了檔還會拿到舊結果，
+    破壞型測試就會假綠（這條與 PDF 那條不同：先用原內容填快取、再覆蓋同一路徑，才分得出鍵是內容還是路徑）。"""
+
+    def test_changed_rtf_and_xlsx_at_same_path_are_reparsed(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "official.rtf"
+            shutil.copy(SRC / "official.rtf", p)
+            _, before = official.read_rtf(p)
+            raw = p.read_bytes().decode("latin-1")
+            p.write_bytes(raw.replace("\nX\n\\cell", "\nO\n\\cell", 1).encode("latin-1"))
+            _, after = official.read_rtf(p)
+            # 不用 assertNotEqual：失敗訊息會把 3,599 題整份印出來
+            self.assertTrue(before != after, "RTF 改了一題答案，read_rtf 仍回舊結果：快取鍵沒含內容")
+
+            x = Path(d) / "true-false.xlsx"
+            shutil.copy(SRC / "true-false.xlsx", x)
+            first, _ = xlsx_bank.read_xlsx("true-false", x)
+            wb = openpyxl.load_workbook(x)
+            row = Corruption._row(wb["1-政府採購全生命週期概論"], 1)
+            row[3].value = f"{row[3].value}。改"
+            wb.save(x)
+            second, _ = xlsx_bank.read_xlsx("true-false", x)
+            self.assertTrue(first != second, "xlsx 改了一題題文，read_xlsx 仍回舊結果：快取鍵沒含內容")
 
 
 class Corruption(unittest.TestCase):
