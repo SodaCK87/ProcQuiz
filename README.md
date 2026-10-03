@@ -17,7 +17,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 在 `web/` 底下操作，第一次先 `npm install`：
 
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
-2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 跑 `python tools/run_gate.py`（Python 測試含「已提交的題庫 JSON 等於重跑轉檔結果」、`npm test`、建置、建置產出檢查），全部通過才發布到 GitHub Pages；CI 另跑 `pip-audit`（對 `requirements.txt`）與 `npm audit --audit-level=high`，相依有已知弱點也不發布，修法是升版後重跑測試。頁尾的「程式 vX.Y.Z（commit）」由 `web/vite.config.js` 在建置時填入。
+2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 跑 `python tools/run_gate.py`（Python 測試含「已提交的題庫 JSON 等於重跑轉檔結果」、`npm test`、建置、建置產出檢查），全部通過才發布到 GitHub Pages；CI 另跑 `pip-audit`（對 `requirements.txt`）與 `npm audit --audit-level=high`，相依有已知弱點也不發布，修法是升版後重跑測試。頁尾的「程式 vX.Y.Z（commit）」由 `web/vite.config.js` 在建置時填入；它也把思源宋體的 OFL 授權全文寫成 `web/dist/THIRD-PARTY-NOTICES.txt`，頁尾「字型授權」連到它，建置產出檢查核對兩者都在。
 3. `npm test`：加權出題、判對錯、錯題判定、練習紀錄、首頁課程清單、背景星圖、題目重點字、卡面樣式規則順序、全域錯誤提示的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
 4. 對比探針：建置後在 repo 根目錄 `node tools/measure_browser.mjs contrast serve:web/dist`，用無頭 Chrome 量選題頁與卡面文字對實際底色的 WCAG 對比（一般字 4.5、大字 3，卡面在 5 個動畫時間點取最差），任一處低於門檻的面積超過 5% 就退出非零。2026-10-03 調色後退出 0（PQZ-08 已修）；改任何顏色、紋理或動畫都要重跑。不在 `run_gate.py` 裡，要本機 Chrome。
 5. 全域錯誤提示：沒被 catch 的例外或沒處理的 rejection 會在畫面最上方出中文訊息（帶程式版本、commit 與回報連結），邏輯在 `web/src/lib/fatal.js`、`npm test` 守；`node tools/measure_browser.mjs errors serve:web/dist` 在建置後的網站裡故意擲錯，確認訊息真的出現。

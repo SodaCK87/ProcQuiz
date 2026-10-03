@@ -32,8 +32,21 @@ function bankIndex(){
   };
 }
 
+// 字型授權（全面盤點 D-04）：dist 隨包發出思源宋體子集（OFL-1.1），授權文字要跟著發；@fontsource 的 LICENSE 開頭只有「Google Inc.」、
+// 沒有宣告 Reserved Font Name，子集沿用家族名可以。tools/run_gate.py 的建置產出檢查核對這個檔在、頁尾有連結
+function fontLicense(){
+  return {
+    name: 'font-license',
+    generateBundle(){
+      const text = readFileSync(new URL('./node_modules/@fontsource/noto-serif-tc/LICENSE', import.meta.url), 'utf8');
+      const head = '本站字型「Noto Serif TC」（思源宋體）由 Google Inc. 發行，依 SIL Open Font License 1.1 授權；站上用的是依題庫用字裁切的子集（tools/build_fonts.py）。授權全文如下。\n\n';
+      this.emitFile({ type: 'asset', fileName: 'THIRD-PARTY-NOTICES.txt', source: head + text });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [bankIndex(), svelte()],
+  plugins: [bankIndex(), fontLicense(), svelte()],
   // 相對路徑：GitHub Pages 掛在 /ProcQuiz/ 底下也能直接開
   base: './',
   // 題庫 JSON 在 repo 的 data/questions/，位於 web/ 之外

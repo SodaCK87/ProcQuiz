@@ -138,7 +138,7 @@
     </section>
   {/if}
 
-  <footer>非官方練習站｜題庫版本 {generated}｜程式 v{version}（{commit}）｜解析為第三方整理，部分經人工審查加註｜紀錄只存在這台裝置｜<a href={ISSUES} target="_blank" rel="noopener">回報問題</a></footer>
+  <footer>非官方練習站｜題庫版本 {generated}｜程式 v{version}（{commit}）｜解析為第三方整理，部分經人工審查加註｜紀錄只存在這台裝置｜<a href={ISSUES} target="_blank" rel="noopener">回報問題</a>｜<a href="./THIRD-PARTY-NOTICES.txt" target="_blank" rel="noopener">字型授權</a></footer>
 </div>
 
 <style>

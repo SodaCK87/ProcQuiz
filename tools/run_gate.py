@@ -1,7 +1,7 @@
 """交付把關的唯一入口：本機交付前與 CI（.github/workflows/pages.yml）跑的是同一支。
 
 依序跑 Python 測試（含「已提交的題庫 JSON 等於重跑轉檔結果」與審查核對）、網站測試、網站建置、建置產出檢查
-（頁尾印得出程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄最新一段三者同版），
+（頁尾印得出程式版本、commit、回報連結與字型授權連結，dist 附 OFL 全文；package.json、最近的 tag、版本紀錄最新一段三者同版），
 任一步失敗就退出非零；全部跑完才印總表，失敗的那步不會擋住後面幾步的結果。
 
 用法：python tools/run_gate.py
@@ -42,9 +42,13 @@ def check_dist() -> int:
     # 與 vite.config.js 同一套取法，CI 與本機各自對得上
     commit = (os.environ.get("GITHUB_SHA") or "")[:7] or git("rev-parse", "--short=7", "HEAD") or ""
     for label, needle in (("程式版本字樣", "程式 v"), ("程式版本", version), ("commit 短碼", commit),
-                          ("回報連結", ISSUES), ("回報字樣", "回報問題")):
+                          ("回報連結", ISSUES), ("回報字樣", "回報問題"), ("字型授權連結", "THIRD-PARTY-NOTICES.txt")):
         if not needle or needle not in js:
             problems.append(f"dist 的入口 JS 找不到{label}「{needle}」：頁尾沒印出來")
+    # 隨包發出的思源宋體子集是 OFL-1.1，授權全文要在 dist 裡（vite.config.js 的 fontLicense 外掛寫的，D-04）
+    notices = WEB / "dist" / "THIRD-PARTY-NOTICES.txt"
+    if not notices.exists() or "SIL Open Font License" not in notices.read_text(encoding="utf-8"):
+        problems.append("dist 沒有 THIRD-PARTY-NOTICES.txt 或裡面沒有 OFL 授權文字：隨包發出的字型子集要附授權")
     tag = git("describe", "--tags", "--abbrev=0")
     if tag is None:
         problems.append("git describe 找不到可到達的 tag：發版要打 tag vX.Y.Z；CI 的 checkout 要 fetch-depth 0 才抓得到")
@@ -56,7 +60,7 @@ def check_dist() -> int:
     for p in problems:
         print(f"✗ {p}")
     if not problems:
-        print(f"✓ 頁尾有 v{version}（{commit}）與回報連結；tag、package.json、版本紀錄都是 v{version}")
+        print(f"✓ 頁尾有 v{version}（{commit}）、回報連結與字型授權連結，dist 有 OFL 全文；tag、package.json、版本紀錄都是 v{version}")
     return 1 if problems else 0
 
 
