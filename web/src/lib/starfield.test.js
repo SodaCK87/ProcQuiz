@@ -35,3 +35,21 @@ test('星圖畫布跟著視窗大小，每格都有畫出光點', () => {
   tick(performance.now() + 32);
   assert.equal(cv.width, -1);
 });
+
+// 減少動態效果時只畫一格靜態星空；轉向或改視窗大小會重設畫布（等於清空），要補畫
+test('減少動態效果：改視窗大小後星空仍在', async () => {
+  let onResize = null;
+  Object.assign(globalThis, {
+    matchMedia: () => ({ matches: true }),
+    addEventListener: (ev, fn) => { if (ev === 'resize') onResize = fn; },
+  });
+  const { start: startReduced } = await import('./starfield.js?reduced');  // 另一份模組實例，狀態不跟上面共用
+  const cv = fakeCanvas();
+  startReduced(cv);
+  assert.ok(onResize, '沒有掛 resize');
+  Object.assign(globalThis, { innerWidth: 812, innerHeight: 375 });
+  calls.drawImage = 0;
+  onResize();
+  assert.equal(cv.width, 812 * 1.5);
+  assert.ok(calls.drawImage >= 90, `改大小後只補畫了 ${calls.drawImage} 顆光點`);
+});
