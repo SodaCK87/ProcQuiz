@@ -5,6 +5,20 @@ import { segments, checkFixes, loadOn, saveOn } from './highlight.js';
 
 const show = s => segments(s).map(x => x.hit ? `【${x.t}】` : x.t).join('');
 const bank = kind => JSON.parse(readFileSync(new URL(`../../../data/questions/${kind}.json`, import.meta.url), 'utf8'));
+const liveFixes = JSON.parse(readFileSync(new URL('./highlight-fixes.json', import.meta.url), 'utf8'));
+
+test('README 寫的「N% 題目有標記，每題最多 M 處」與真題庫跑規則加微調的結果相同（C-04）', () => {
+  let total = 0, marked = 0, max = 0;
+  for (const kind of ['true-false', 'multiple-choice']) for (const q of bank(kind).questions){
+    const hits = segments(q.stem, liveFixes[q.id] ?? null).filter(s => s.hit).length;
+    total++; if (hits) marked++; max = Math.max(max, hits);
+  }
+  const readme = readFileSync(new URL('../../../README.md', import.meta.url), 'utf8');
+  const m = readme.match(/全部合計 (\d+)% 題目有標記，每題最多 (\d+) 處/);
+  assert.ok(m, 'README 找不到「全部合計 N% 題目有標記，每題最多 M 處」');
+  assert.equal(Number(m[1]), Math.round(100 * marked / total), `README 寫 ${m[1]}%，實際 ${marked}／${total} 題有標記`);
+  assert.equal(Number(m[2]), max, `README 寫每題最多 ${m[2]} 處，實際最多 ${max} 處`);
+});
 
 test('重點字：否定、全稱、門檻與數字', () => {
   assert.equal(show('凡有欠稅情形之廠商，一律不得參與政府採購之投標。'), '【凡】有欠稅情形之廠商，【一律不得】參與政府採購之投標。');

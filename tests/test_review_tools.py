@@ -69,6 +69,21 @@ class HighlightCheck(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("上線 1027", r.stdout)
 
+    def test_readme_numbers_match_the_check_output(self):
+        # README〈網站〉的線索數字是手打的（C-04）：拿核對腳本印的那一行逐個比對
+        import re
+        out = run(TOOLS / "highlight_check.py").stdout
+        m = re.search(r"線索 (\d+)：通過 (\d+)、判錯 (\d+)（改標 (\d+)、拿掉 (\d+)）、無法核對 (\d+)；上線 (\d+)", out)
+        self.assertTrue(m, f"核對腳本沒印出線索統計那一行：{out[-200:]}")
+        clues, _, _, refixed, dropped, unverifiable, live = map(int, m.groups())
+        passed = int(m.group(2))
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        want = {"提出 {:,} 段": clues, "通過 {:,} 段": passed, "改標 {:,} 段": refixed, "拿掉 {:,} 段": dropped,
+                "上線 {:,} 段": live, "無法核對的 {:,} 段": unverifiable}
+        for tmpl, n in want.items():
+            with self.subTest(tmpl.format(n)):
+                self.assertTrue(tmpl.format(n) in readme, f"README 沒有「{tmpl.format(n)}」：核對腳本算出 {n}，README 寫的數字過期了")
+
     def test_runs_under_legacy_console_encoding(self):
         # PQZ-06：stdout 導向管線時 Windows 用 cp950，印 ✓ 擲 UnicodeEncodeError 退出 1，資料一致也報失敗。
         # 強制 cp950 讓三個平台都走同一條路；腳本自己要把 stdout 改成 utf-8。上面那條帶 PYTHONIOENCODING=utf-8 看不到這件事

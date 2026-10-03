@@ -8,8 +8,8 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ 。手機實機確認過翻卡不頓（2026-10-02）、星空不再重排（2026-10-03）；還沒在實機確認長解析能不能捲到底、連續練會不會發熱、系統字級放大、LINE 內建瀏覽器轉址（清單在 [目標路線圖.md](目標路線圖.md)〈現在卡在哪〉）。進度見路線圖。
-測試：`python -m unittest discover -s tests` 43 條全綠（2026-10-04，本機 Python 3.11.9，約 32 秒；相依先裝 `pip install -r requirements.txt`）；
-網站邏輯 `npm test`（在 `web/`）35 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
+測試：`python -m unittest discover -s tests` 44 條全綠（2026-10-04，本機 Python 3.11.9，約 32 秒；相依先裝 `pip install -r requirements.txt`）；
+網站邏輯 `npm test`（在 `web/`）36 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 
 ## 網站
 
@@ -32,7 +32,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 規則在 `web/src/lib/highlight.js`；逐題微調在 `web/src/lib/highlight-fixes.json`，跟題庫一起在背景下載，對不上現行題文（官方改題或重排編號）時 `npm test` 會失敗。
 微調來自兩輪子代理（2026-10-03）：第一輪逐題看過 3,599 題，拿掉規則誤標、補標陷阱字，並提出 1,523 段「答案線索」（題目裡決定答案的一小段）；
 第二輪獨立核對線索，只認該題（或相鄰成對題）的解析、法條欄、審查註記與政府採購法、施行細則全文，引文由程式逐字比對。
-通過 1,011 段、改標 16 段後上線 1,027 段，無法核對的 494 段不標。全部合計 74% 題目有標記，每題最多 5 處。
+通過 1,011 段、改標 16 段、拿掉 2 段，上線 1,027 段，無法核對的 494 段不標。全部合計 74% 題目有標記，每題最多 5 處（這幾個數字由 `tests/test_review_tools.py` 對核對腳本的輸出、`npm test` 對實際標記結果比對）。
 已知限制：線索在作答前就顯示，是非題答 X 的線索就是錯處；依據不在手邊的辦法與函釋的題目，線索一律未上線。
 核對紀錄在 `data/review/work/highlight/`（指示在 `docs/審查指示/指示-重點字*.md`），`python tools/review/highlight_check.py` 逐條驗依據引文並重建微調，
 與 `highlight-fixes.json` 不同就退出非零，Python 測試會跑它。要改線索或微調，先改紀錄再重建，不要只改 `highlight-fixes.json`。

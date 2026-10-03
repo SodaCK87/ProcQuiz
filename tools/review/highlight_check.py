@@ -99,10 +99,11 @@ def main():
     # 用判定重建微調：第一輪合併版＋放行的線索（pass 用原線索、fail 用 fix）＋ restore 還原
     want = {k: {"add": list(v.get("add", [])), "drop": list(v.get("drop", []))} for k, v in trap.items()}
     count = {v: 0 for v in VERDICTS}
-    live = 0
+    live = refixed = 0
     for qid, r in final.items():
         count[r["verdict"]] += 1
         add = clues[qid] if r["verdict"] == "pass" else r.get("fix")
+        refixed += r["verdict"] == "fail" and bool(add)
         f = want.setdefault(qid, {"add": [], "drop": []})
         if add:
             f["add"].append(add); live += 1
@@ -114,7 +115,9 @@ def main():
         if got.get(qid) != want.get(qid):
             errs.append(f"{qid}：highlight-fixes.json 與核對紀錄重建的結果不同")
 
-    print(f"線索 {len(clues)}：通過 {count['pass']}、判錯 {count['fail']}、無法核對 {count['unverifiable']}；上線 {live}")
+    # README〈網站〉引用這一行的每個數字，tests/test_review_tools.py 比對（全面盤點 C-04）
+    print(f"線索 {len(clues)}：通過 {count['pass']}、判錯 {count['fail']}（改標 {refixed}、拿掉 {count['fail'] - refixed}）、"
+          f"無法核對 {count['unverifiable']}；上線 {live}")
     if errs:
         print("\n".join(f"✗ {e}" for e in errs[:30]), file=sys.stderr)
         die(f"共 {len(errs)} 項不符")
