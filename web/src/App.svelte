@@ -106,7 +106,6 @@
 </script>
 
 <div class="page-bg" aria-hidden="true"></div>
-<div class="page-dim" aria-hidden="true"></div>
 <canvas class="stars" bind:this={canvas} aria-hidden="true"></canvas>
 
 <div class="wrap">
@@ -147,8 +146,6 @@
 </div>
 
 <style>
-  /* 背景再暗 40%：壓在古紙上、星圖下 */
-  .page-dim{position:fixed;inset:0;background:#000;opacity:var(--page-dim);pointer-events:none;z-index:0}
   /* 高度跟大視窗走：手機網址列收合時畫布大小不變（不支援 lvh 的瀏覽器退回 100%） */
   .stars{position:fixed;left:0;top:0;width:100%;height:100%;height:100lvh;pointer-events:none;z-index:0}
   .wrap{position:relative;z-index:1;max-width:460px;margin:0 auto}

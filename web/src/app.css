@@ -22,15 +22,17 @@ body{
   padding:18px 16px 32px;
   background-color:var(--night);
 }
-/* 頁面古紙放在固定的獨立圖層，捲動時不必重畫（取代 background-attachment:fixed） */
+/* 頁面古紙放在固定的獨立圖層，捲動時不必重畫（取代 background-attachment:fixed）；
+   最上面一層是「背景再暗 40%」，原本是另一個全螢幕元素，星空每格重畫時要多合成一層 */
 .page-bg{
   position:fixed;inset:0;z-index:0;pointer-events:none;
   background-image:
+    linear-gradient(rgba(0,0,0,var(--page-dim)),rgba(0,0,0,var(--page-dim))),
     radial-gradient(ellipse 120% 90% at 50% 35%, transparent 35%, rgba(0,0,0,.75) 100%),
     var(--tex-page-fiber,none),
     var(--tex-page-stain,none),
     linear-gradient(var(--night-2),var(--night-3) 60%,var(--night-2));
-  background-size:auto,400px 400px,600px 600px,auto;
+  background-size:auto,auto,400px 400px,600px 600px,auto;
 }
 button{font:inherit}
 
