@@ -33,6 +33,9 @@
   let question = $derived(deck && view === 'quiz' ? byId.get(deck.cur) : null);
   let courseName = $derived(bank && question ? bank.courses.find(c => c.id === question.course)?.name ?? '' : '');
   const generated = INDEX['true-false'].generated;
+  // 建置時由 vite.config.js 的 define 填入：程式版本（web/package.json）與 commit 短碼；回報問題到 repo 的 Issues
+  const version = __PQZ_VERSION__, commit = __PQZ_COMMIT__;
+  const ISSUES = 'https://github.com/SodaCK87/ProcQuiz/issues';
 
   // 每個題型只下載一次；首頁一出現就在背景開始抓目前的題型
   const pending = {};
@@ -141,7 +144,7 @@
     </section>
   {/if}
 
-  <footer>非官方練習站｜題庫版本 {generated}｜解析為第三方整理，部分經人工審查加註｜紀錄只存在這台裝置</footer>
+  <footer>非官方練習站｜題庫版本 {generated}｜程式 v{version}（{commit}）｜解析為第三方整理，部分經人工審查加註｜紀錄只存在這台裝置｜<a href={ISSUES} target="_blank" rel="noopener">回報問題</a></footer>
 </div>
 
 <style>
@@ -164,4 +167,5 @@
   .hint{margin:0 6px 14px;padding:10px 12px;border-radius:10px;font-size:14px;line-height:1.6;
     color:var(--page-ink);background:rgba(28,20,12,.85);border:1px solid var(--gold)}
   footer{margin-top:22px;text-align:center;font-size:12px;color:var(--page-ink-2);opacity:.85;line-height:1.6}
+  footer a{color:var(--gold-hi)}
 </style>

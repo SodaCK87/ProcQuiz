@@ -20,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # 完整歷史與 tag：run_gate.py 的建置產出檢查要用 git describe 核對最近的 tag 等於 package.json 的版本
+          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
