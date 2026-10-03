@@ -22,9 +22,7 @@ async function bake(svg, size, scale){
 
 export async function bakeTextures(root = document.documentElement){
   const scale = Math.min(2, devicePixelRatio || 1);
-  await Promise.all(Object.entries(TEXTURES).map(async ([name, t]) => {
-    let url;
-    try { url = await bake(t.svg, t.size, scale); } catch { url = t.svg; }
-    root.style.setProperty(`--tex-${name}`, `url("${url}")`);
-  }));
+  const urls = await Promise.all(Object.values(TEXTURES).map(t => bake(t.svg, t.size, scale).catch(() => t.svg)));
+  // 五個變數一次寫完：每寫一次根元素的自訂屬性就是一次全文件樣式重算
+  Object.keys(TEXTURES).forEach((name, i) => root.style.setProperty(`--tex-${name}`, `url("${urls[i]}")`));
 }
