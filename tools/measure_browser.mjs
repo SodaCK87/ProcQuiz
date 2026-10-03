@@ -134,7 +134,9 @@ if (mode === 'visual'){
 if (mode === 'fonts'){
   const out = {};
   const list = `(()=>{ const r=performance.getEntriesByType('resource').filter(e=>/\\.woff2?$/.test(e.name)); return { 檔數:r.length, 位元組:r.reduce((a,e)=>a+e.encodedBodySize,0) }; })()`;
-  for (const u of urls){ await open(u, 4000); const home = await ev(list); await startQuiz(); out[u] = { 首頁: home, 出卡後: await ev(list) }; }
+  // 線上站經網路下載，固定等幾秒可能還沒抓完；等到有字型檔、document.fonts 也載完（最多 20 秒）才數
+  const settle = `(async()=>{ for (let i=0;i<40;i++){ if (performance.getEntriesByType('resource').some(e=>/\\.woff2?$/.test(e.name)) && document.fonts.status==='loaded') break; await new Promise(r=>setTimeout(r,500)); } await document.fonts.ready; await new Promise(r=>setTimeout(r,1000)); return 1; })()`;
+  for (const u of urls){ await open(u, 1000); await ev(settle); const home = await ev(list); await startQuiz(); await ev(settle); out[u] = { 首頁: home, 出卡後: await ev(list) }; }
   finish(out);
 }
 
