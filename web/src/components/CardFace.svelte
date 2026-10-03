@@ -1,8 +1,8 @@
 <script>
   import { runeRing } from '../lib/runes.js';
 
-  /** side：'front' 或 'back'；children 是卡面內容，foot 是底部按鈕列 */
-  let { side, children, foot, footHidden = false } = $props();
+  /** side：'front' 或 'back'；children 是卡面內容，foot 是底部按鈕列；dormant 為背對畫面、暫停常駐動畫 */
+  let { side, children, foot, footHidden = false, dormant = false } = $props();
 
   const runes = runeRing();
   const inks = [[28, 30, 0], [70, 58, 3.7], [38, 80, 7.3]];
@@ -10,7 +10,7 @@
   const corners = ['tl', 'tr', 'bl', 'br'];
 </script>
 
-<section class="face {side}" aria-hidden={side === 'back'}>
+<section class="face {side}" class:dormant aria-hidden={side === 'back'}>
   <div class="paper">
     <div class="cardfx" aria-hidden="true">
       <div class="fx-ink">
@@ -114,4 +114,6 @@
   .sheen{position:absolute;inset:0;z-index:4;overflow:hidden;opacity:0;pointer-events:none}
   .sheen b{position:absolute;top:-30%;bottom:-30%;left:-60%;width:60%;
     background:linear-gradient(100deg,transparent 20%,rgba(var(--sheen),.55) 50%,transparent 80%)}
+  /* 放最後並多一層 .face：要壓過上面各動畫簡寫裡隱含的 running */
+  .face.dormant::before,.face.dormant :global(*){animation-play-state:paused}
 </style>

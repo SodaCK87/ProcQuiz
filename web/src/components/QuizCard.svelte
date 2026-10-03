@@ -19,6 +19,7 @@
   /* ---------- 光影翻轉（定案樣式）：所有狀態在 S，一條 rAF 迴圈逐格算 ---------- */
   const S = { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, prevDiff: 0, onLand: null };
   let shades = [], sheens = [], bars = [], running = false, last = 0, shownFront = null;
+  let dormantFront = $state(false), dormantBack = $state(true);
 
   function render(){
     if (!card) return;
@@ -58,13 +59,17 @@
   function tickFrame(now){
     const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
     step(dt); render();
-    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else running = false;
+    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else { running = false; rest(); }
   }
+
+  // 背對畫面的那面暫停常駐動畫：看不到，卻照樣每幀重算與合成
+  function rest(){ dormantFront = !shownFront; dormantBack = shownFront; }
 
   function flipTo(target, onLand){
     S.onLand = onLand || null;
     if (reduced){ S.theta = target; render(); land(); return; }
     S.mode = 'spring'; S.target = target; S.landed = false; S.prevDiff = S.theta - target;
+    dormantFront = dormantBack = false;
     if (!running){ running = true; last = performance.now(); requestAnimationFrame(tickFrame); }
   }
 
@@ -102,7 +107,7 @@
     answered = false; chosen = null; revealed = false; guessed = false;
     Object.assign(S, { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, onLand: null });
     await tick();
-    render();
+    render(); rest();
     for (const b of slot.querySelectorAll('.body')) b.scrollTop = 0;
     await slot.animate(inn, { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' }).finished;
     slot.getAnimations().forEach(a => a.cancel());
@@ -112,7 +117,7 @@
   onMount(() => {
     front = card.querySelector('.front'); back = card.querySelector('.back');
     shades = [...card.querySelectorAll('.shade')]; sheens = [...card.querySelectorAll('.sheen')]; bars = [...card.querySelectorAll('.sheen b')];
-    render();
+    render(); rest();
     setAvoid(() => slot && slot.getBoundingClientRect());
   });
   onDestroy(() => setAvoid(null));
@@ -122,7 +127,7 @@
   <div class="aura" bind:this={aura}></div>
   <div class="floor" bind:this={floor}></div>
   <div class="card" bind:this={card}>
-    <CardFace side="front" footHidden={!revealed}>
+    <CardFace side="front" footHidden={!revealed} dormant={dormantFront}>
       <div class="inner">
         <div class="meta">{kindLabel}・{courseName}・第 {question.no} 題</div>
         <p class="stem">{#each stem as s}{#if s.hit}<mark><i class="star" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 0C13 9 15 11 24 12 15 13 13 15 12 24 11 15 9 13 0 12 9 11 11 9 12 0Z" fill="currentColor"/></svg></i>{s.t}</mark>{:else}{s.t}{/if}{/each}</p>
@@ -141,7 +146,7 @@
       </div>
       {#snippet foot()}<button class="btn primary" onclick={show}>看答案</button>{/snippet}
     </CardFace>
-    <CardFace side="back">
+    <CardFace side="back" dormant={dormantBack}>
       <!-- 解析在出題時就排好，字型也趁讀題時載入；按下答案只換上面的判定 -->
       <div class="verdict" class:ok={isOk} class:bad={!isOk}>
         <div class="seal">{isOk ? '正' : '誤'}</div>
