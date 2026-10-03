@@ -4,6 +4,7 @@
 README〈狀態〉寫的兩個測試條數是手打的，兩輪盤點都抓到落後（30 對 32、25 對 29）；這裡拿實際載入的條數比對（全面盤點 C-01）。
 1 MiB 以上的檔進版控會讓 repo 隨換版線性長大，規範的「進版控」欄要寫得出理由（全面盤點 B-04）。
 """
+import json
 import re
 import shutil
 import subprocess
@@ -76,6 +77,26 @@ class Readme(unittest.TestCase):
                 self.assertTrue(hit, f"{f} 在規範〈頂層資料夾〉找不到對應的資料夾列")
                 cell = rows[max(hit, key=len)]
                 self.assertTrue(cell.startswith("是") and len(cell) > 6, f"{f} 有 {(ROOT / f).stat().st_size >> 20} MiB，規範 {max(hit, key=len)} 的「進版控」欄只寫「{cell}」，要寫理由")
+
+    def test_support_range_matches_the_configs(self):
+        # README〈狀態〉寫的 Node／Python／瀏覽器下限是手打的（D-02）：對 package.json engines、pages.yml、vite build.target
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        ci = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+        engines = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8")).get("engines", {})
+        node_engine = re.search(r">=\s*(\d+)", engines.get("node", ""))
+        node_ci = re.search(r"node-version:\s*'?(\d+)", ci)
+        py_ci = re.search(r"python-version:\s*'?(\d+\.\d+)", ci)
+        self.assertTrue(node_engine and node_ci and py_ci, "package.json engines.node、pages.yml 的 node-version／python-version 有一個讀不到")
+        self.assertEqual(node_engine.group(1), node_ci.group(1), "package.json engines.node 與 CI 的 node-version 不同版")
+        for s in (f"Node {node_ci.group(1)}", f"Python {py_ci.group(1)}"):
+            self.assertTrue(s in readme, f"README 沒寫「{s}」（CI 用的版本）")
+        vite = (ROOT / "web" / "vite.config.js").read_text(encoding="utf-8")
+        m = re.search(r"target:\s*\[([^\]]+)\]", vite)
+        self.assertTrue(m, "vite.config.js 沒有明寫 build.target")
+        target = dict(re.findall(r"'([a-z]+)([\d.]+)'", m.group(1)))
+        self.assertEqual(target["chrome"], target["edge"]); self.assertEqual(target["safari"], target["ios"])
+        for s in (f"Chrome／Edge {target['chrome']}", f"Firefox {target['firefox']}", f"Safari／iOS {target['safari']}"):
+            self.assertTrue(s in readme, f"README 沒寫「{s}」（vite build.target）")
 
     def test_status_counts_match_the_suites(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

@@ -38,7 +38,8 @@ export default defineConfig({
   base: './',
   // 題庫 JSON 在 repo 的 data/questions/，位於 web/ 之外
   server: { fs: { allow: ['..'] } },
-  // 題庫 JSON 兩包各 0.6–1 MB，本來就拆成按需載入，不再細切
-  build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 1200 },
+  // 題庫 JSON 兩包各 0.6–1 MB，本來就拆成按需載入，不再細切。
+  // 建置目標明寫（vite 8 的預設值）：升 vite 大版預設會變而沒人知道；README〈狀態〉寫的支援瀏覽器由 tests/test_readme.py 對這份比對（全面盤點 D-02）
+  build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 1200, target: ['chrome111', 'edge111', 'firefox114', 'safari16.4', 'ios16.4'] },
   define: { __PQZ_VERSION__: JSON.stringify(pkg.version), __PQZ_COMMIT__: JSON.stringify(commit()) },
 });
