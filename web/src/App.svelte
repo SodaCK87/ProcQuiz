@@ -6,6 +6,7 @@
   import { bakeTextures } from './lib/textures.js';
   import { load, save, record, markGuess, stats, isWrong, MASTER } from './lib/progress.js';
   import { pool, pick, deckKey } from './lib/deck.js';
+  import { loadOn, saveOn } from './lib/highlight.js';
   import INDEX from 'virtual:bank-index';
 
   // 題庫在 repo 的 data/questions/，由 tools/convert.py 產生；動態載入，選到那個題型才下載
@@ -23,6 +24,8 @@
   let deck = $state.raw(null);     // { key, cur, recent, mixed }：目前這題、最近出過的題號、是否為錯題模式穿插的題目
   let loadError = $state('');
   let starting = $state(false);    // 按了開始，題庫還在下載
+  let marks = $state(loadOn());     // 題目重點字開關
+  let fixes = $state.raw({});       // 重點字逐題微調，跟題庫一起在背景下載，不佔首頁
   const inLine = /\bLine\//.test(navigator.userAgent);
 
   let bank = $derived(banks[kind] ?? null);
@@ -39,6 +42,8 @@
     return pending[k];
   }
   $effect(() => { ensure(kind).catch(() => {}); });
+  // 沒下載到就只用規則標記，不影響作答
+  import('./lib/highlight-fixes.json').then(m => { fixes = m.default; }, () => {});
 
   // 思源宋體等題庫到了才開始下載：慢網路下字型切片（首頁就要 16 塊、約 700 KB）會跟題庫搶頻寬；
   // 在那之前先用系統內建的明體
@@ -109,10 +114,11 @@
   {:else if view === 'quiz' && question}
     <nav class="bar">
       <button class="back" onclick={() => view = 'start'}>‹ 選題</button>
+      <button class="marks" aria-pressed={marks} onclick={() => { marks = !marks; saveOn(marks); }}>✦ 重點字{marks ? '' : '：關'}</button>
       {#if rangeStats}<span>{mode === 'wrong' ? `錯題剩 ${rangeStats.wrong} 題${deck.mixed ? '・穿插複習' : ''}` : '全部'}・熟練 {rangeStats.mastered}／{rangeStats.total}</span>{/if}
     </nav>
     {#key deck.key}
-      <QuizCard {question} kindLabel={bank.label} {courseName} {onresult} {onguess} {onnext} />
+      <QuizCard {question} kindLabel={bank.label} {courseName} {marks} fix={fixes[question.id]} {onresult} {onguess} {onnext} />
     {/key}
   {:else if view === 'done'}
     <section class="done">
@@ -138,6 +144,9 @@
   header p{margin:2px 0 0;font-size:13px;color:var(--page-ink-2);letter-spacing:.08em}
   .bar{display:flex;justify-content:space-between;align-items:center;margin:0 6px 12px;font-size:14px;color:var(--page-ink-2)}
   .back{border:0;background:none;color:var(--gold-hi);cursor:pointer;padding:4px 0;font-size:15px}
+  .marks{margin-right:auto;margin-left:12px;padding:2px 10px;border-radius:999px;cursor:pointer;font-size:13px;
+    color:var(--page-ink-2);background:rgba(20,14,8,.6);border:1px solid rgba(143,108,42,.55)}
+  .marks[aria-pressed="true"]{color:var(--gold-hi);border-color:var(--gold-hi)}
   .done{text-align:center;padding:40px 12px}
   .done h2{color:var(--gold-hi);letter-spacing:.15em}
   .go{display:flex;gap:10px;margin-top:20px}

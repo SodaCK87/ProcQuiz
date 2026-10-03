@@ -2,9 +2,10 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import CardFace from './CardFace.svelte';
   import { burst, setAvoid } from '../lib/starfield.js';
+  import { segments } from '../lib/highlight.js';
 
-  /** onresult(ok) 作答當下呼叫；onguess() 答對後標記是猜的；onnext() 換下一題（由外層改 question） */
-  let { question, kindLabel, courseName, onresult, onguess, onnext } = $props();
+  /** onresult(ok) 作答當下呼叫；onguess() 答對後標記是猜的；onnext() 換下一題（由外層改 question）；marks 為是否標重點字，fix 為這題的逐題微調 */
+  let { question, kindLabel, courseName, onresult, onguess, onnext, marks = true, fix = null } = $props();
 
   const NOTE_TITLE = { replace: '審查說明', correct: '出處更正', law: '法條更正', answer: '答案註記' };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -12,6 +13,7 @@
   let slot, card, floor, aura, front, back;
   let answered = $state(false), chosen = $state(null), revealed = $state(false), guessed = $state(false), busy = false;
   let isOk = $derived(answered && String(chosen) === String(question.answer));
+  let stem = $derived(marks ? segments(question.stem, fix) : [{ t: question.stem, hit: false }]);
   let choices = $derived(question.options ? question.options.map((t, k) => [k + 1, t]) : [['O', null], ['X', null]]);
 
   /* ---------- 光影翻轉（定案樣式）：所有狀態在 S，一條 rAF 迴圈逐格算 ---------- */
@@ -123,7 +125,7 @@
     <CardFace side="front" footHidden={!revealed}>
       <div class="inner">
         <div class="meta">{kindLabel}・{courseName}・第 {question.no} 題</div>
-        <p class="stem">{question.stem}</p>
+        <p class="stem">{#each stem as s}{#if s.hit}<mark><i class="star" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 0C13 9 15 11 24 12 15 13 13 15 12 24 11 15 9 13 0 12 9 11 11 9 12 0Z" fill="currentColor"/></svg></i>{s.t}</mark>{:else}{s.t}{/if}{/each}</p>
         <div class={question.options ? 'mc' : 'tf'}>
           {#each choices as [val, text]}
             <button class="btn"
@@ -176,7 +178,13 @@
   .meta{font-size:12px;color:var(--ink-2);letter-spacing:.06em;margin-bottom:10px;text-align:center}
   .meta::after{content:"";display:block;height:1px;margin:8px auto 0;width:60%;
     background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-  .stem{font-size:18px;margin:0 0 18px;line-height:1.75}
+  .stem{font-size:18px;margin:0 0 18px;line-height:1.85}
+  /* 重點字：星芒點睛（原型 web/prototype/highlight-style.html 的 D 樣式，星星在字首） */
+  mark{background:none;color:var(--gold-hi);font-weight:700;text-shadow:0 0 8px rgba(240,212,138,.35)}
+  .star{display:inline-block;width:.62em;height:.62em;vertical-align:.75em;margin:0 .05em 0 .1em;color:#fff3c8;
+    filter:drop-shadow(0 0 3px rgba(240,212,138,.9));animation:twk 3.6s ease-in-out infinite}
+  .star svg{display:block;width:100%;height:100%}
+  @keyframes twk{0%,100%{transform:scale(.55) rotate(0);opacity:.55}40%{transform:scale(1.1) rotate(45deg);opacity:1}70%{transform:scale(.7) rotate(90deg);opacity:.7}}
   .tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .tf .btn{font-size:30px;font-weight:700;padding:14px 0;line-height:1.2}
   .mc{display:grid;gap:9px}
