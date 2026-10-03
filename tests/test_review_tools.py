@@ -69,6 +69,15 @@ class HighlightCheck(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("上線 1027", r.stdout)
 
+    def test_runs_under_legacy_console_encoding(self):
+        # PQZ-06：stdout 導向管線時 Windows 用 cp950，印 ✓ 擲 UnicodeEncodeError 退出 1，資料一致也報失敗。
+        # 強制 cp950 讓三個平台都走同一條路；腳本自己要把 stdout 改成 utf-8。上面那條帶 PYTHONIOENCODING=utf-8 看不到這件事
+        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONUTF8", "PYTHONIOENCODING")}
+        env["PYTHONIOENCODING"] = "cp950"
+        r = subprocess.run([sys.executable, str(TOOLS / "highlight_check.py")], capture_output=True, env=env)
+        self.assertEqual(r.returncode, 0, (r.stdout + r.stderr).decode("utf-8", "replace"))
+        self.assertIn("✓".encode("utf-8"), r.stdout)
+
     def test_tampering_is_caught(self):
         # 陽性對照：竄改一條依據引文、或在微調裡偷加一段沒核對過的線索，都要退出非零
         cases = {

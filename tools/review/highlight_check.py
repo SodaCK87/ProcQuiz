@@ -14,6 +14,9 @@ import sys
 import unicodedata
 from pathlib import Path
 
+# 輸出導向檔案或管線時 Windows 主控台用 cp950，印 ✓ 會擲 UnicodeEncodeError、資料一致也退出 1（PQZ-06）
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 ROOT = Path(__file__).resolve().parent.parent.parent
 WORK = ROOT / "data" / "review" / "work"
 HL = WORK / "highlight"
