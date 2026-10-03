@@ -41,7 +41,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 第一次先在 repo 根目錄 `pip install -r requirements.txt`（版本釘死，換版先跑測試）。
 
 1. `python tools/fetch_official.py`：從政府電子採購網「採購法規題庫」下載全部題庫的 DOC 與 PDF，兩份都成功才覆蓋 `data/source/official.*`。
-2. `python tools/convert.py`：核對後寫出 `data/questions/*.json`，並列出與上一版相比新增、刪除、改答案的題目。任何一項核對不過就中止且不寫檔。
+2. `python tools/convert.py`：核對後寫出 `data/questions/*.json`，並列出與上一版相比新增、刪除、改答案、改解析、改註記的題目。任何一項核對不過就中止且不寫檔；`data/review/notes.json` 不在也中止。
 3. 第三方解析出新版時，覆蓋 `data/source/true-false.xlsx`、`multiple-choice.xlsx` 再跑第 2 步。
 4. `python tools/build_fonts.py`：依新題庫重切網站用的思源宋體子集（要先在 `web/` 跑過 `npm ci`）。介面文字改了也要重跑；`tests/test_fonts.py` 會抓到缺字。
 5. 跑一次測試、看過 `git diff data/questions/` 後 commit。
@@ -58,6 +58,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 | 解析只掛在 xlsx 題文與答案都和官方相同的題目上 | 第三方解析對到舊題或錯答案 |
 | xlsx 逐課程核對目錄頁題數與 O 題數 | 解析來源本身不一致（已知一例：PQZ-01） |
 | 審查註記記下審查當時的題目與解析指紋，對不上即中止 | 官方重排編號或改題後，註記掛到別題 |
+| 註記檔 `data/review/notes.json` 不在即中止；差異報告含解析與註記的變動 | 註記檔不見或換錯路徑時 99 則註記無聲消失、報「0 處變動」（PQZ-07） |
 
 ## 題庫來源
 

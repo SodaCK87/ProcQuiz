@@ -128,6 +128,37 @@ class ReviewNotes(unittest.TestCase):
         with self.assertRaisesRegex(BankError, "類型不合法"):
             self._apply(self._note("隨便寫"))
 
+    def test_missing_notes_file_is_rejected(self):
+        # PQZ-07：註記檔不在時原本當成「沒有註記」照常寫檔，99 則註記無聲消失；build 要在讀大檔之前就擋
+        with self.assertRaisesRegex(BankError, "找不到審查註記"):
+            convert.apply_review([self.q], self.tmp / "nope.json")
+        with self.assertRaisesRegex(BankError, "找不到審查註記"):
+            convert.build(review=self.tmp / "nope.json")
+
+
+class DiffVersions(unittest.TestCase):
+    """換版差異報告。解析與註記不在官方檔裡，不報它們的話整批消失也是「0 處變動」（PQZ-07）。"""
+
+    @staticmethod
+    def _bank(**over):
+        q = {"id": "tf-01-0001", "stem": "某題", "answer": "O", "explanation": "解析甲", "notes": [{"type": "correct", "text": "更正"}]}
+        q.update(over)
+        return {"questions": [q]}
+
+    def test_unchanged_is_empty(self):
+        self.assertEqual(convert.diff_versions(self._bank(), self._bank()), [])
+
+    def test_reports_answer_explanation_and_notes(self):
+        old = self._bank()
+        self.assertEqual(convert.diff_versions(old, self._bank(answer="X")), ["改答案 tf-01-0001：O → X"])
+        self.assertEqual(convert.diff_versions(old, self._bank(explanation=None)), ["改解析 tf-01-0001：解析甲 → （無）"])
+        self.assertEqual(convert.diff_versions(old, self._bank(notes=[])), ["改註記 tf-01-0001：1 → 0 則"])
+
+    def test_changed_text_is_delete_plus_add(self):
+        # 以題文當鍵：改題文等於刪一題加一題，編號照官方重排也不會錯配
+        lines = convert.diff_versions(self._bank(), self._bank(id="tf-01-0002", stem="改過的題"))
+        self.assertEqual([x.split(" ")[0] for x in lines], ["刪除", "新增"])
+
 
 class Output(unittest.TestCase):
     def test_committed_json_matches_regeneration(self):

@@ -42,8 +42,7 @@ def apply_review(questions: list[dict], review: Path) -> set[str]:
     """把人工審查定案的註記掛上題目。題文或解析與審查當時不同就中止：編號可能被官方重排，
     註記若照編號掛上去會對到別題。"""
     applied: set[str] = set()
-    if not review.exists():
-        return applied
+    require_review(review)
     by_id = {q["id"]: q for q in questions}
     for n in json.loads(review.read_text(encoding="utf-8")):
         q = by_id.get(n["id"])
@@ -64,8 +63,17 @@ def apply_review(questions: list[dict], review: Path) -> set[str]:
     return applied
 
 
+def require_review(review: Path) -> None:
+    """註記檔不在就中止。原本當成「沒有註記」照常寫檔：99 則審查註記無聲消失、被取代的解析換回來，
+    差異報告還印「0 處變動」（PQZ-07）。檔案在版控裡，不會有正當理由不在。"""
+    if not review.exists():
+        raise BankError(f"找不到審查註記 {review}：沒有它，審查定案的註記會整批消失、被取代的解析會換回來；"
+                        "這個檔進版控，請確認路徑或用 git 還原")
+
+
 def build(source: Path = SOURCE, review: Path = REVIEW) -> tuple[dict[str, dict], list[str]]:
     """回傳（{kind: 題庫資料}, 提醒清單）。任何核對失敗擲 BankError。"""
+    require_review(review)  # 先擋，不必等讀完三份大檔才發現
     date, sections = read_rtf(source / "official.rtf")
     names = {course for _, course in sections}
     if names != set(COURSES):
@@ -137,10 +145,9 @@ def build(source: Path = SOURCE, review: Path = REVIEW) -> tuple[dict[str, dict]
             "courses": [{"id": i, "name": c, "count": len(sections[(kind, c)])} for i, c in enumerate(COURSES, 1)],
             "questions": questions,
         }
-    if review.exists():
-        unknown = {n["id"] for n in json.loads(review.read_text(encoding="utf-8"))} - applied
-        if unknown:
-            raise BankError(f"審查註記指向不存在的題目：{sorted(unknown)}")
+    unknown = {n["id"] for n in json.loads(review.read_text(encoding="utf-8"))} - applied
+    if unknown:
+        raise BankError(f"審查註記指向不存在的題目：{sorted(unknown)}")
     return result, notes
 
 
@@ -163,13 +170,19 @@ def render(data: dict) -> str:
 
 
 def diff_versions(old: dict, new: dict) -> list[str]:
-    """以題文比對新舊兩版，列出新增、刪除、改答案。編號會因官方重排而變，不拿編號比。"""
+    """以題文比對新舊兩版，列出新增、刪除、改答案、改解析、改註記。編號會因官方重排而變，不拿編號比。"""
     o = {question_key(q): q for q in old["questions"]}
     n = {question_key(q): q for q in new["questions"]}
+    both = n.keys() & o.keys()
+    brief = lambda t: t[:20] if t else "（無）"
     lines = [f"新增 {n[k]['id']}：{n[k]['stem'][:40]}" for k in n.keys() - o.keys()]
     lines += [f"刪除 {o[k]['id']}：{o[k]['stem'][:40]}" for k in o.keys() - n.keys()]
-    lines += [f"改答案 {n[k]['id']}：{o[k]['answer']} → {n[k]['answer']}"
-              for k in n.keys() & o.keys() if o[k]["answer"] != n[k]["answer"]]
+    lines += [f"改答案 {n[k]['id']}：{o[k]['answer']} → {n[k]['answer']}" for k in both if o[k]["answer"] != n[k]["answer"]]
+    # 解析與註記不在官方檔裡：換 xlsx、改 notes.json 時只有這兩類會動，不報的話整批消失也是「0 處變動」（PQZ-07）
+    lines += [f"改解析 {n[k]['id']}：{brief(o[k].get('explanation'))} → {brief(n[k].get('explanation'))}"
+              for k in both if o[k].get("explanation") != n[k].get("explanation")]
+    lines += [f"改註記 {n[k]['id']}：{len(o[k].get('notes') or [])} → {len(n[k].get('notes') or [])} 則"
+              for k in both if (o[k].get("notes") or []) != (n[k].get("notes") or [])]
     return sorted(lines)
 
 
@@ -200,9 +213,16 @@ def main(argv: list[str]) -> int:
                 changes = diff_versions(json.loads(current), data)
             except (KeyError, json.JSONDecodeError):
                 changes = ["（上一版格式不同，無法比對）"]
-            print(f"  與上一版相比：{len(changes)} 處變動")
+            by_kind: dict[str, list[str]] = {}
             for c in changes:
-                print(f"    {c}")
+                by_kind.setdefault(c.split(" ", 1)[0], []).append(c)
+            summary = "、".join(f"{k} {len(v)}" for k, v in by_kind.items())
+            print(f"  與上一版相比：{len(changes)} 處變動" + (f"（{summary}）" if changes else ""))
+            for k, v in by_kind.items():  # 每類最多列 30 筆，整批換解析時不會刷掉幾千行
+                for c in v[:30]:
+                    print(f"    {c}")
+                if len(v) > 30:
+                    print(f"    …{k}另 {len(v) - 30} 筆，看 git diff data/questions/")
         OUT.mkdir(parents=True, exist_ok=True)
         dst.write_text(text, encoding="utf-8", newline="\n")
 
