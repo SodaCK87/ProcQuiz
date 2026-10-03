@@ -53,7 +53,8 @@ function init(){
 
 function size(){
   DPR = Math.min(1.5, devicePixelRatio || 1);  // 光點本來就是柔邊，畫布解析度不必跟到 3 倍
-  W = innerWidth; H = innerHeight;
+  // 高度取畫布實際高（CSS 100lvh）：手機捲動時網址列收合只改 innerHeight，不該跟著重抽星星
+  W = innerWidth; H = cv.clientHeight || innerHeight;
   cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (W && H){ init(); if (reduced) frame(0, 0); }  // 重設寬高會清空畫布；靜態模式沒有下一格可以補
 }
@@ -101,14 +102,14 @@ function loop(now){
   if (now < due - 2) return;
   due = Math.max(due, now - 17) + 1000 / 60;
   const dt = Math.min((now - last) / 1000, .05); last = now;
-  if (W !== innerWidth || H !== innerHeight) size();  // 開頁當下視窗尺寸可能還是 0，resize 事件不一定會補發
+  if (W !== innerWidth || !H) size();  // 開頁當下視窗尺寸可能還是 0，resize 事件不一定會補發
   frame(dt, now / 1000);
 }
 
 export function start(canvas){
   cv = canvas; cx = cv.getContext('2d'); sprite = makeSprite();
   reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  size(); addEventListener('resize', size);
+  size(); addEventListener('resize', () => { if (W !== innerWidth || H !== (cv.clientHeight || innerHeight)) size(); });
   if (reduced) return;
   last = performance.now(); requestAnimationFrame(loop);
 }

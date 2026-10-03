@@ -49,6 +49,23 @@ test('高更新率螢幕只畫約 60 格：120／90／60 Hz 各跑 1 秒', () =>
   }
 });
 
+// 手機捲動時網址列收合，innerHeight 會變、resize 會觸發；畫布高度改跟大視窗（100lvh）走，不該整片重抽星星
+test('網址列收合（只有 innerHeight 變）不重設畫布', () => {
+  let onResize = null;
+  const keep = globalThis.addEventListener;
+  globalThis.addEventListener = (ev, fn) => { if (ev === 'resize') onResize = fn; };
+  const cv = { ...fakeCanvas(), clientHeight: 812 };
+  start(cv);
+  globalThis.addEventListener = keep;
+  assert.equal(cv.height, 812 * 1.5);
+  cv.width = -1;  // 記號：被重設就會變回正數
+  globalThis.innerHeight = 740;
+  onResize();
+  tick(performance.now() + 5000);
+  assert.equal(cv.width, -1, '網址列收合時畫布被重設，星星整片重抽');
+  globalThis.innerHeight = 812;
+});
+
 // 減少動態效果時只畫一格靜態星空；轉向或改視窗大小會重設畫布（等於清空），要補畫
 test('減少動態效果：改視窗大小後星空仍在', async () => {
   let onResize = null;
