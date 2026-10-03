@@ -252,6 +252,7 @@ if (mode === 'contrast'){
   // 逐像素把字色依透明度壓在那個像素上再算 WCAG 對比；報最低值、中位數、低於門檻的面積比例。門檻照 WCAG：一般字 4.5、
   // 大字（≥24px，或 ≥18.66px 且粗體）3。金墨暈染會改變卡面亮度，卡面兩個狀態在幾個凍結時間各量一次取最差；星空藏掉（隨機又會動）。
   // 第一個變體（預設「現況」）任一選擇器低於門檻的面積超過 --max-below（預設 5%）就退出 1；其餘變體只列出來比較（A／B 選色用）。
+  // ⚠️ 抽到的題目每次不同（Math.random 雖固定種子，出題前星空等已消耗不定次數），只影響題文長短與有無解析，不影響顏色；紅的項數會差幾項。
   const MAX_BELOW = Number(opt('max-below', 5)), CARD_TIMES = [500, 1400, 3000, 6000, 9000];
   const SEL = {
     選題頁: ['header p', '.lbl', '.seg button[aria-pressed="true"]', '.seg button[aria-pressed="false"]', '.course .name', '.course .count', '.course .sub', '.go .btn.primary', 'footer', 'footer a'],

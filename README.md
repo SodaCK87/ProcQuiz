@@ -8,8 +8,8 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
-測試：`python -m unittest discover -s tests` 30 條全綠（2026-10-03，本機 Python 3.11.9，約 39 秒；相依先裝 `pip install -r requirements.txt`）；
-網站邏輯 `npm test`（在 `web/`）25 條全綠（Node 24）。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
+測試：`python -m unittest discover -s tests` 38 條全綠（2026-10-03，本機 Python 3.11.9，約 34 秒；相依先裝 `pip install -r requirements.txt`）；
+網站邏輯 `npm test`（在 `web/`）29 條全綠（Node 24）。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 
 ## 網站
 
@@ -18,7 +18,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
 2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 跑 `python tools/run_gate.py`（Python 測試含「已提交的題庫 JSON 等於重跑轉檔結果」、`npm test`、建置、建置產出檢查），全部通過才發布到 GitHub Pages。頁尾的「程式 vX.Y.Z（commit）」由 `web/vite.config.js` 在建置時填入。
 3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單、背景星圖、題目重點字的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
-4. 對比探針：建置後在 repo 根目錄 `node tools/measure_browser.mjs contrast serve:web/dist`，用無頭 Chrome 量選題頁與卡面文字對實際底色的 WCAG 對比（一般字 4.5、大字 3，卡面在 5 個動畫時間點取最差），任一處低於門檻的面積超過 5% 就退出非零。現況 13 處紅（PQZ-08），調色定案後它要轉綠；不在 `run_gate.py` 裡，要本機 Chrome。
+4. 對比探針：建置後在 repo 根目錄 `node tools/measure_browser.mjs contrast serve:web/dist`，用無頭 Chrome 量選題頁與卡面文字對實際底色的 WCAG 對比（一般字 4.5、大字 3，卡面在 5 個動畫時間點取最差），任一處低於門檻的面積超過 5% 就退出非零。現況紅（PQZ-08，出處行、正解列、選擇題選項、題型鈕按下態等約十處，抽到的題目不同會差幾處），調色定案後它要轉綠；不在 `run_gate.py` 裡，要本機 Chrome。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
 
