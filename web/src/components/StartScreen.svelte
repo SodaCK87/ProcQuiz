@@ -63,6 +63,8 @@
   .seg button{flex:1;padding:6px 10px;border:0;cursor:pointer;background:rgba(20,14,8,.6);color:var(--page-ink-2);font-size:15px}
   /* 漸層下半原為 #8f6c2a，深字壓上去對比 3.9；改 #a37f36 過 4.5（PQZ-08） */
   .seg button[aria-pressed="true"]{background:linear-gradient(180deg,#b8913f,#a37f36);color:#1a1208;font-weight:700}
+  /* 焦點環畫在鈕的內側：.seg 的 overflow:hidden 會把預設的外側焦點環裁掉三邊，鍵盤使用者看不出焦點在哪（A-03） */
+  .seg button:focus-visible{outline:2px solid var(--gold-hi);outline-offset:-3px}
   .courses{display:grid;gap:8px}
   .course{
     display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;cursor:pointer;

@@ -10,6 +10,7 @@
   const corners = ['tl', 'tr', 'bl', 'br'];
 </script>
 
+<!-- inert 不寫成屬性：Svelte 會在 dormant 變動時把它重設回初值，QuizCard 的 render() 在翻面時直接設 DOM 屬性 -->
 <section class="face {side}" class:dormant aria-hidden={side === 'back'}>
   <div class="paper">
     <div class="cardfx" aria-hidden="true">

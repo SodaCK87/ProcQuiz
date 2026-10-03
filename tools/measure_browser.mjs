@@ -19,6 +19,8 @@
 //              都要出現帶版本、commit 與回報連結的 .fatal，否則退出 1
 //   storage    紀錄存不進去的提示（全面盤點 A-04）：正常作答後不該有 [role=alert]；把 Storage.prototype.setItem 換成擲 QuotaExceededError 再作答，
 //              要出現提到「紀錄」的提示且不是全域錯誤提示，否則退出 1
+//   focus      鍵盤焦點（全面盤點 A-03）：選題頁、卡面正面、翻到背面各按 Tab 8 次，焦點不能落在 aria-hidden 的那一面；
+//              題型／出題分段鈕的焦點環要畫在 .seg（overflow:hidden）裡面，否則退出 1
 //
 // 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
 // Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
@@ -37,8 +39,8 @@ import { gzipSync } from 'node:zlib';
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage|focus> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage', 'focus'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
@@ -391,4 +393,28 @@ if (mode === 'storage'){
   out.存檔失敗後 = await ev(read);
   const ok = out.正常作答 && out.失敗作答 && out.正常作答後.length === 0 && out.存檔失敗後.some(t => /紀錄/.test(t)) && !out.存檔失敗後.some(t => /網頁出了錯/.test(t));
   finish({ 通過: !!ok, ...out }, ok ? 0 : 1);
+}
+
+if (mode === 'focus'){
+  // 鍵盤焦點（A-03）：隱藏那一面靠 inert 擋 Tab（pointer-events 只擋滑鼠）；分段鈕的焦點環用 outline-offset 負值畫在鈕內側，才不會被 .seg 的 overflow:hidden 裁掉
+  const tab = async () => { for (const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }); await sleep(80); };
+  const FOCUSED = `(() => { const el = document.activeElement; if (!el || el === document.body) return { text: '(body)' };
+    const hidden = !!el.closest('[aria-hidden="true"]'), cs = getComputedStyle(el), r = el.getBoundingClientRect(), seg = el.closest('.seg');
+    let ring = null;
+    if (seg){ const grow = parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth), s = seg.getBoundingClientRect(), b = parseFloat(getComputedStyle(seg).borderTopWidth);
+      // 焦點環的外緣（鈕的框加 offset 加寬度）要在 .seg 的 padding box 裡，差 0.5px 內算在裡面
+      ring = { style: cs.outlineStyle, inside: r.left - grow >= s.left + b - .5 && r.top - grow >= s.top + b - .5 && r.right + grow <= s.right - b + .5 && r.bottom + grow <= s.bottom - b + .5 }; }
+    return { text: el.textContent.trim().slice(0, 10), hidden, ring }; })()`;
+  const walk = async n => { const seq = []; for (let i = 0; i < n; i++){ await tab(); seq.push(await ev(FOCUSED)); } return seq; };
+  const out = {};
+  await open(urls[0], 2500);
+  out.選題頁 = await walk(8);
+  await startQuiz();
+  out.卡面正面 = await walk(8);
+  await ev(`(__find('O') || __find('1')).click()`); await sleep(1800);
+  out.翻到背面 = await walk(8);
+  const all = [...out.選題頁, ...out.卡面正面, ...out.翻到背面], bad = all.filter(f => f.hidden), segs = out.選題頁.filter(f => f.ring);
+  const ringOk = segs.length >= 2 && segs.every(f => f.ring.style !== 'none' && f.ring.inside);
+  const ok = bad.length === 0 && ringOk && out.卡面正面.some(f => /^[OX1]$/.test(f.text)) && out.翻到背面.some(f => /看題目|下一題/.test(f.text));
+  finish({ 通過: ok, 落在隱藏面: bad.map(f => f.text), 分段鈕數: segs.length, 焦點環在容器內: ringOk, ...out }, ok ? 0 : 1);
 }

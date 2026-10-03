@@ -34,6 +34,8 @@
       back.style.pointerEvents = frontOn ? 'none' : '';
       front.setAttribute('aria-hidden', String(!frontOn));
       back.setAttribute('aria-hidden', String(frontOn));
+      // pointer-events 擋不住鍵盤：沒有 inert 時 Tab 會停在看不見那面的按鈕，按 Enter 等於跳題（全面盤點 A-03）
+      front.inert = !frontOn; back.inert = frontOn;
     }
     const narrow = .3 + .7 * Math.abs(cos);
     floor.style.transform = `translateY(${lift * .3}px) scale(${narrow * (1 + side * .25)}, ${1 + side * .6})`;
