@@ -7,6 +7,7 @@
   import { load, save, record, markGuess, stats, isWrong, MASTER } from './lib/progress.js';
   import { pool, pick, deckKey } from './lib/deck.js';
   import { loadOn, saveOn } from './lib/highlight.js';
+  import { ISSUES } from './lib/fatal.js';
   import INDEX from 'virtual:bank-index';
 
   // 題庫在 repo 的 data/questions/，由 tools/convert.py 產生；動態載入，選到那個題型才下載
@@ -35,7 +36,6 @@
   const generated = INDEX['true-false'].generated;
   // 建置時由 vite.config.js 的 define 填入：程式版本（web/package.json）與 commit 短碼；回報問題到 repo 的 Issues
   const version = __PQZ_VERSION__, commit = __PQZ_COMMIT__;
-  const ISSUES = 'https://github.com/SodaCK87/ProcQuiz/issues';
 
   // 每個題型只下載一次；首頁一出現就在背景開始抓目前的題型
   const pending = {};
@@ -59,7 +59,7 @@
   function loadFonts(){
     if (fontsRequested) return;
     fontsRequested = true;
-    import('./fonts.css');
+    import('./fonts.css').catch(() => {});  // 字型抓不到就留系統明體，不是錯，不要觸發全域錯誤提示
   }
 
   // 存檔延到閒置時：作答當下要先讓翻卡第一格出來，整份紀錄 stringify 加寫入不擋在點擊裡；離開頁面前一定寫完
