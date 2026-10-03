@@ -1,0 +1,601 @@
+{
+ "tf-08-0032": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0031 解析",
+  "evidence": "得向廠商收取必要之成本費用，其金額由招標機關定之"
+ },
+ "tf-08-0036": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0038": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0040": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0050": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0049 解析",
+  "evidence": "領標階段：廠商以招標文件規定之其他方式領標或待系統恢復後再行電子領標。機關得視個案受影響情形，公告延長等標期。"
+ },
+ "tf-08-0054": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0053 解析",
+  "evidence": "機關及廠商以電子化方式辦理採購，依規定應簽名或蓋章者，應以數位簽章為之。"
+ },
+ "tf-08-0058": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0057 解析",
+  "evidence": "持卡人辦理公務採購，其使用政府採購卡之相關紀錄，與持卡人個人信用無關。"
+ },
+ "tf-08-0062": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0064": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0063 解析",
+  "evidence": "電子招標文件及電子投標文件，其以文字或圖形檔處理有困難者，得以掃描電子文件代之。"
+ },
+ "tf-08-0066": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0065 解析",
+  "evidence": "以單價決標者，為單價乘以預估數量之總金額或預估採購總金額。"
+ },
+ "tf-08-0068": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0067 解析",
+  "evidence": "採購公報除星期例假日、放假日及特殊情形外，按日發行。"
+ },
+ "tf-08-0070": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0069 解析",
+  "evidence": "政府採購卡：指信用卡業務機構發給機關，用以支付政府採購價金之信用卡、轉帳卡或儲值卡。"
+ },
+ "tf-08-0072": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0071 解析",
+  "evidence": "機關依投標廠商資格與特殊或巨額採購認定標準第五條第三項規定辦理者，應於招標公告或招標文件公開預算金額。"
+ },
+ "tf-08-0078": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0084": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0086": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0085 解析",
+  "evidence": "以書面文件簽約者，內容應與電子投標文件相同；其不同者，以電子投標文件為準。"
+ },
+ "tf-08-0088": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0090": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0092": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-08-0091 解析",
+  "evidence": "下列政府採購資訊應刊登採購公報一日，並公開於主管機關之政府採購資訊網站"
+ },
+ "tf-08-0094": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0101": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0103": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0105": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0111": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0115": {
+  "verdict": "unverifiable"
+ },
+ "tf-08-0116": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0006": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0007 解析",
+  "evidence": "其提出之說明經機關認為顯不合理或尚非完全合理，有降低品質、不能誠信履約之虞或其他特殊情形者，不通知最低標提出差額保證金，逕不決標予該最低標"
+ },
+ "tf-09-0014": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0015 解析",
+  "evidence": "經需求、使用或承辦採購單位就個案敘明邀請指定廠商比價或議價之適當理由，簽報機關首長或其授權人員核准者"
+ },
+ "tf-09-0020": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0023": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0022 解析",
+  "evidence": "採購法並未規定開標當日即須完成審標或決標。機關得視案件之繁簡斟酌辦理"
+ },
+ "tf-09-0035": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0042": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0043 解析",
+  "evidence": "政府採購錯誤行為態樣二、資格限制競爭(一六) 投標當時即必須擁有指定之設備。"
+ },
+ "tf-09-0044": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0046": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0048": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0055": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0078": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0086": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0096": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0097 解析",
+  "evidence": "應為即期並以機關為受款人。未填寫受款人者，以執票之機關為受款人。"
+ },
+ "tf-09-0099": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0104": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0103 解析",
+  "evidence": "應將個案之公共利益大於申訴廠商之利益具體明確化，以免恣意濫用，不當侵害廠商權益"
+ },
+ "tf-09-0108": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0112": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0113": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0116": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0120": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-09-0119 解析",
+  "evidence": "投標廠商應提出之資格證明文件，除招標文件另有規定者外，以影本為原則。"
+ },
+ "tf-09-0125": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0128": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0132": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0134": {
+  "verdict": "unverifiable"
+ },
+ "tf-09-0157": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0005": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0014": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0016": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0015 解析",
+  "evidence": "機關允許外國廠商參與非條約協定採購者，得於招標文件中規定外國廠商不適用本法下列規定"
+ },
+ "tf-10-0022": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0021 解析",
+  "evidence": "機關允許廠商於得標後提出替代方案者，招標文件應訂明下列事項"
+ },
+ "tf-10-0030": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0029 解析",
+  "evidence": "機關辦理採購，得於招標文件中規定優良廠商應繳納之押標金、履約保證金或保固保證金金額得予減收"
+ },
+ "tf-10-0038": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0037 解析",
+  "evidence": "如廠商無法攜帶印章前往開標，可授權代表人攜帶蓋有該印章之授權書並由該代表人以簽名代替蓋章"
+ },
+ "tf-10-0040": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0039 解析",
+  "evidence": "無論是否適用我國締結之條約或協定之採購，機關均得於招標文件規定不允許大陸地區廠商、產品或勞務參與採購"
+ },
+ "tf-10-0042": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0041 解析",
+  "evidence": "履約保證金之發還，得以履約進度、驗收、維修或保固期間等條件，一次或分次發還，由機關視案件性質及實際需要，於招標文件中訂明。"
+ },
+ "tf-10-0044": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0048": {
+  "verdict": "fail",
+  "source": "相鄰題 tf-10-0047 解析",
+  "evidence": "為利廠商瞭解預算金額之意義，機關得就已公開之預算金額，一併於招標文件規定",
+  "fix": "機關得就已公開預算金額之採購案"
+ },
+ "tf-10-0051": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0050 解析",
+  "evidence": "應即檢討原因、責任歸屬並採行相關配套措施，重行簽報核准。完成採購後，亦同。"
+ },
+ "tf-10-0058": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0057 解析",
+  "evidence": "投標廠商應於投標當日遞送投標文件前至工程會網站web.pcc.gov.tw查詢自己（包括總公司及各分公司）"
+ },
+ "tf-10-0063": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0064": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0066": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0065 解析",
+  "evidence": "義務採購單位依第七條第二項第二款規定辦理優先採購者，其參考最有利標決標方式如下"
+ },
+ "tf-10-0068": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0070": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0087": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0086 解析",
+  "evidence": "機關允許共同投標時，得於招標文件中規定共同投標廠商各成員及代表廠商之基本資格。"
+ },
+ "tf-10-0090": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0089 解析",
+  "evidence": "機關得視個案情形及實際需要於招標文件中規定：「廠商如以銀行之書面連帶保證或開發或保兌之不可撤銷擔保信用狀繳納履約保證金者"
+ },
+ "tf-10-0095": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0099": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0104": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0103 解析",
+  "evidence": "並得於招標文件規定經評選達一定分數或名次之未獲選廠商，發給一定金額之獎勵金。"
+ },
+ "tf-10-0115": {
+  "verdict": "unverifiable"
+ },
+ "tf-10-0122": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0121 解析",
+  "evidence": "機關辦理採購，不得於招標文件規定廠商之投標文件有下列情形之一者，為不合格標。其有規定者，該部分無效。"
+ },
+ "tf-10-0124": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0123 解析",
+  "evidence": "茲建議貴府爾後辦理採購，改由機關自行製作及裝訂契約書，所需費用由機關自行負擔"
+ },
+ "tf-10-0126": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0125 解析",
+  "evidence": "採總包價法計費之案件，且契約有規定廠商給付派駐勞工之薪資金額者，可依該資料檢核廠商實際給付予派駐勞工之薪資金額是否合於採購契約之要求"
+ },
+ "tf-10-0128": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-10-0127 解析",
+  "evidence": "製作招標文件如遇有勞動法令相關疑義，可洽勞動法令之主管機關協助釐清，以確保其內容符合勞動法令相關規定"
+ },
+ "tf-11-0015": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0020": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0019 解析",
+  "evidence": "機關對於廠商及其人員因履約所致之人體傷亡或財物損失，不負賠償責任。"
+ },
+ "tf-11-0023": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0022 解析",
+  "evidence": "契約所包括之各種文件，應明定其效力及優先順序。"
+ },
+ "tf-11-0026": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0025 解析",
+  "evidence": "機關就廠商履約標的為查驗、測試或檢驗之權利，應不受該標的曾通過其他查驗、測試或檢驗之限制。"
+ },
+ "tf-11-0028": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0027 解析",
+  "evidence": "廠商不於前項期限內改正、拒絕改正或其瑕疵不能改正者，機關得採行下列措施之一：(一) 自行或使第三人改正，並得向廠商請求償還改正必要之費用。"
+ },
+ "tf-11-0031": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0033": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0032 解析",
+  "evidence": "契約應記載總價。無總價者應記載項目、單價及金額或數量上限。"
+ },
+ "tf-11-0035": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0037": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0036 解析",
+  "evidence": "政府採購屬於私經濟行政，係行政機關處於與私人相當之法律地位"
+ },
+ "tf-11-0041": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0040 解析",
+  "evidence": "致未能依時履約者，得展延履約期限；不能履約者，得免除契約責任。"
+ },
+ "tf-11-0043": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0042 解析",
+  "evidence": "契約變更，非經機關及廠商雙方之合意，作成書面紀錄，並簽名或蓋章者，無效。"
+ },
+ "tf-11-0051": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0053": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0052 解析",
+  "evidence": "包括以書面、錄音、錄影、照相、微縮、電子數位資料或樣品等方式呈現之原件或複製品"
+ },
+ "tf-11-0054": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0057": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0056 解析",
+  "evidence": "廠商於刊登廣告前，應提報擬刊登廣告之網路廣告平臺及擬刊登內容供機關審查"
+ },
+ "tf-11-0060": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0059 解析",
+  "evidence": "其結果不符合契約規定者，由廠商負擔所生之費用；結果符合者，由機關負擔費用。"
+ },
+ "tf-11-0062": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0061 解析",
+  "evidence": "契約文字應以中文書寫，其與外文文意不符者，除契約另有規定者外，以中文為準。"
+ },
+ "tf-11-0065": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0064 解析",
+  "evidence": "待命部分之估驗計價，廠商應於機關指定時間前到達，並自機關指定時間起，迄機關通知解除待命時間止"
+ },
+ "tf-11-0067": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0068": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0092": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0093": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0095": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0094 解析",
+  "evidence": "但屬機關取得者，機關得於契約規定由廠商代為取得，並由機關負擔必要之費用。"
+ },
+ "tf-11-0096": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0098": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0097 解析",
+  "evidence": "除契約另有規定外，廠商同意機關得擇優通知廠商使用，廠商不會就此表示異議。"
+ },
+ "tf-11-0109": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0108 解析",
+  "evidence": "機關辦理查驗或驗收，得於契約規定廠商就履約標的於一定場所、期間及條件下之試車、試運轉或試用等測試程序"
+ },
+ "tf-11-0111": {
+  "verdict": "unverifiable"
+ },
+ "tf-11-0115": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0114 解析",
+  "evidence": "所有日數（包括放假日等）均應納入，不因履約期限以工作天或日曆天計算而有差別。"
+ },
+ "tf-11-0117": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0116 解析",
+  "evidence": "竣工期限以小時為單位者，本目計算時間單位改為小時。"
+ },
+ "tf-11-0119": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0118 解析",
+  "evidence": "契約價金之給付，依實際施作或供應之項目及數量結算"
+ },
+ "tf-11-0121": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0120 解析",
+  "evidence": "工程採購契約所附供廠商投標用之數量清單，其數量為估計數，不應視為廠商完成履約所須供應或施作之實際數量。"
+ },
+ "tf-11-0129": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-11-0128 解析",
+  "evidence": "應溯自該派駐勞工在機關提供勞務之第一日併計該派駐勞工服務之年資，計算特別休假日數"
+ },
+ "tf-12-0016": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-12-0015 解析",
+  "evidence": "減價結果在底價以內時(包括平底價)，除有政府採購法第58條總標價或部分標價偏低之情形者外，應即宣布決標。"
+ },
+ "tf-12-0021": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-12-0020 解析",
+  "evidence": "最有利標決標，廠商須報價者，應審查廠商單價及總價，並考量該價格相對於該廠商所提供之品質等非價格項目"
+ },
+ "tf-12-0027": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-12-0026 解析",
+  "evidence": "其後續數年維護服務之價格，建議附於採購標的一併考量，例如列為廠商報價項目或納入評選項目之一，合併招標決標"
+ },
+ "tf-12-0031": {
+  "verdict": "unverifiable"
+ },
+ "tf-12-0044": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-12-0043 解析",
+  "evidence": "製作保留決標紀錄，載明如有決標時，以保留決標日為決標日。"
+ },
+ "tf-12-0046": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-12-0045 解析",
+  "evidence": "其訂有底價，而廠商報價逾底價須減價者，於採行協商措施時洽減之"
+ },
+ "tf-12-0048": {
+  "verdict": "unverifiable"
+ },
+ "tf-12-0062": {
+  "verdict": "pass",
+  "source": "政府採購法第53條",
+  "evidence": "機關確有緊急情事需決標時，應經原底價核定人或其授權人員核准，且不得超過底價百分之八。"
+ },
+ "tf-12-0063": {
+  "verdict": "fail",
+  "source": "政府採購法第53條",
+  "evidence": "且不得超過底價百分之八。但查核金額以上之採購，超過底價百分之四者，應先報經上級機關核准後決標。"
+ },
+ "tf-12-0067": {
+  "verdict": "unverifiable"
+ },
+ "tf-12-0070": {
+  "verdict": "unverifiable"
+ },
+ "tf-12-0086": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-12-0085 解析",
+  "evidence": "固定成本－不隨履約標的之數量而變動之成本。例如設備。"
+ },
+ "tf-12-0090": {
+  "verdict": "pass",
+  "source": "施行細則第75條",
+  "evidence": "但標價合理者，評審委員會得不提出建議之金額。"
+ },
+ "tf-13-0017": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-13-0016 解析",
+  "evidence": "審議判斷書應附記如不服審議判斷，得於審議判斷書送達之次日起二個月內，向行政法院提起行政訴訟。"
+ },
+ "tf-13-0018": {
+  "verdict": "unverifiable"
+ },
+ "tf-13-0026": {
+  "verdict": "unverifiable"
+ },
+ "tf-13-0040": {
+  "verdict": "unverifiable"
+ },
+ "tf-13-0073": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-13-0072 解析",
+  "evidence": "但於第一次預審會議期日前撤回者，無息退還二分之一。"
+ },
+ "tf-14-0008": {
+  "verdict": "unverifiable"
+ },
+ "tf-14-0012": {
+  "verdict": "unverifiable"
+ },
+ "tf-14-0014": {
+  "verdict": "unverifiable"
+ },
+ "tf-14-0023": {
+  "verdict": "unverifiable"
+ },
+ "tf-14-0029": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-14-0030 解析",
+  "evidence": "「承辦採購人員」採廣義解釋，包括處理訂定招標文件、招標、決標、訂約、履約管理、驗收及爭議處理之人員"
+ },
+ "tf-14-0033": {
+  "verdict": "unverifiable"
+ },
+ "tf-14-0035": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-14-0034 解析",
+  "evidence": "發現招標文件之規定或作業程序違法者，除有為因應緊急情況或公共利益之必要者外，應予改正後再辦"
+ },
+ "tf-14-0037": {
+  "verdict": "unverifiable"
+ },
+ "tf-14-0052": {
+  "verdict": "pass",
+  "source": "相鄰題 tf-14-0051 解析",
+  "evidence": "刑事訴訟法§241公務員因執行職務知有犯罪嫌疑者，應為告發。"
+ },
+ "tf-14-0054": {
+  "verdict": "unverifiable"
+ },
+ "mc-02-0015": {
+  "verdict": "pass",
+  "source": "相鄰題 mc-02-0014 解析",
+  "evidence": "檢送相關文件報請上級機關派員監辦財物、工程：5000萬以上勞務：1000萬以上"
+ },
+ "mc-02-0059": {
+  "verdict": "unverifiable"
+ },
+ "mc-02-0084": {
+  "verdict": "unverifiable"
+ },
+ "mc-02-0094": {
+  "verdict": "unverifiable"
+ },
+ "mc-02-0131": {
+  "verdict": "pass",
+  "source": "政府採購法第36條",
+  "evidence": "特殊或巨額之採購，須由具有相當經驗、實績、人力、財力、設備等之廠商始能擔任者，得另規定投標廠商之特定資格。"
+ },
+ "mc-02-0145": {
+  "verdict": "unverifiable"
+ },
+ "mc-04-0008": {
+  "verdict": "unverifiable"
+ },
+ "mc-04-0010": {
+  "verdict": "pass",
+  "source": "相鄰題 mc-04-0011 解析",
+  "evidence": "本委員會置委員五人以上，由機關就具有與採購案相關專門知識之人員派兼或聘兼之"
+ },
+ "mc-05-0003": {
+  "verdict": "unverifiable"
+ },
+ "mc-06-0106": {
+  "verdict": "unverifiable"
+ },
+ "mc-08-0007": {
+  "verdict": "pass",
+  "source": "相鄰題 mc-08-0008 解析",
+  "evidence": "其金額由招標機關定之。其另有書面文件者，不得高於書面文件發售費用。"
+ },
+ "mc-10-0011": {
+  "verdict": "unverifiable"
+ }
+}

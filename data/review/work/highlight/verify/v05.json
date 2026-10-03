@@ -1,0 +1,594 @@
+{
+ "tf-04-0110": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "指該產品經相關目的事業主管機關認定符合此等條件，並發給證明文件者"
+ },
+ "tf-04-0112": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0116": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0117": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "其由中小企業承包之金額，以該中小企業主辦項目之金額認定之"
+ },
+ "tf-04-0126": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "其延長履約期限之程序，非屬該法第99條所定「甄選投資廠商」之程序，爰不適用該法之規定"
+ },
+ "tf-04-0132": {
+  "verdict": "pass",
+  "source": "政府採購法第100條",
+  "evidence": "機關多餘不用之堪用財物，得無償讓與其他政府機關或公立學校"
+ },
+ "tf-04-0135": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0136": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0137": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0139": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0140": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "機關依採購法第101條第1項規定通知廠商刊登政府採購公報，適用行政罰法第27條第1項所定3年裁處權時效"
+ },
+ "tf-04-0141": {
+  "verdict": "pass",
+  "source": "政府採購法第101條",
+  "evidence": "廠商之履約連帶保證廠商經機關通知履行連帶保證責任者，適用前項規定"
+ },
+ "tf-04-0143": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0146": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "除經機關於開標前發現不予開標之情形外，自開標時起算"
+ },
+ "tf-04-0147": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0148": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0149": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "第一審判決發生效力時，有宣示者，自宣示時起算；無宣示者，自判決書送達廠商時起算"
+ },
+ "tf-04-0150": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "前揭規定之適用要件除採購法第101條第1項第6款須經第1審為有罪判決外，餘並未以司法機關起訴或判決為要件"
+ },
+ "tf-04-0151": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0152": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "縱因已變更商號名稱或負責人，其通知及刊登對象為該商號，不擴及其負責人"
+ },
+ "tf-04-0153": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0154": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "該變更尚不影響該事業主體原適用政府採購法第101條之規定"
+ },
+ "tf-04-0155": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0156": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0157": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0161": {
+  "verdict": "pass",
+  "source": "政府採購法第104條",
+  "evidence": "二、機密或極機密之採購，得不適用第二十七條、第四十五條及第六十一條之規定。"
+ },
+ "tf-04-0162": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "軍事機關辦理本法第一百零四條第一項第二款之採購，應符合下列規定：一、查核金額以上之採購，應報經國防部核准"
+ },
+ "tf-04-0163": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0164": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "而不適用本法規定時，由國防部發布命令，並副知主管機關"
+ },
+ "tf-04-0165": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0167": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0168": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "簽報首長或其授權人員核准採限制性招標，邀請 2 家以上廠商比價或僅邀請 1 家廠商議價。仍需議價"
+ },
+ "tf-04-0170": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0171": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0173": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "一、不及與廠商簽訂契約者，應先有書面、電報或傳真協議。"
+ },
+ "tf-04-0174": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0178": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "且該採購業經機關首長或其授權人員核准確有緊急處置之必要"
+ },
+ "tf-04-0179": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0182": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0183": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0187": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0188": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0189": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0192": {
+  "verdict": "pass",
+  "source": "施行細則第112-2條",
+  "evidence": "指採購案件自機關開始計劃至廠商完成契約責任期間所產生之各類文字或非文字紀錄資料及其附件"
+ },
+ "tf-04-0193": {
+  "verdict": "pass",
+  "source": "施行細則第112-2條",
+  "evidence": "指採購案件自機關開始計劃至廠商完成契約責任期間所產生之各類文字或非文字紀錄資料及其附件"
+ },
+ "tf-04-0194": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0195": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0197": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0200": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0204": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "但稽核小組對於民眾、廠商檢舉或媒體關切之案件，無論採購進行至何階段，都應予受理"
+ },
+ "tf-04-0207": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0213": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "稽核小組進行稽核監督時，得不預先通知機關。"
+ },
+ "tf-04-0215": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "於檢驗、拆驗、化驗或鑑定結果與契約規定相符者，由稽核小組之設立機關負擔"
+ },
+ "tf-04-0216": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0219": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "但機關另有分工規定者，從其規定。共同供應契約之採購，由訂約機關彙總提報"
+ },
+ "tf-04-0221": {
+  "verdict": "pass",
+  "source": "政府採購法第111條",
+  "evidence": "機關辦理巨額採購，應於使用期間內，逐年向主管機關提報使用情形及其效益分析"
+ },
+ "tf-04-0225": {
+  "verdict": "unverifiable"
+ },
+ "tf-04-0226": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0005": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0007": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0009": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0012": {
+  "verdict": "pass",
+  "source": "政府採購法第85-1條",
+  "evidence": "工程及技術服務採購之調解，採購申訴審議委員會應提出調解建議或調解方案；其因機關不同意致調解不成立者"
+ },
+ "tf-05-0013": {
+  "verdict": "pass",
+  "source": "政府採購法第85-1條",
+  "evidence": "工程及技術服務採購之調解，採購申訴審議委員會應提出調解建議或調解方案；其因機關不同意致調解不成立者"
+ },
+ "tf-05-0014": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "得由機關依實際需要於招標文件明定為實際薪資之一定比率及給付條件，免檢據核銷"
+ },
+ "tf-05-0020": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "除廠商提出者外，機關得自行蒐集或至本法主管機關網站查詢"
+ },
+ "tf-05-0021": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0022": {
+  "verdict": "pass",
+  "source": "施行細則第92條",
+  "evidence": "機關應於收到該書面通知之日起七日內會同監造單位及廠商，依據契約、圖說或貨樣核對竣工之項目及數量"
+ },
+ "tf-05-0023": {
+  "verdict": "pass",
+  "source": "施行細則第92條",
+  "evidence": "機關應於收到該書面通知之日起七日內會同監造單位及廠商，依據契約、圖說或貨樣核對竣工之項目及數量"
+ },
+ "tf-05-0024": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0029": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0031": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0033": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "前項公告，應公開於政府採購法主管機關之政府採購資訊網站"
+ },
+ "tf-05-0036": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0037": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0038": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0043": {
+  "verdict": "pass",
+  "source": "政府採購法第70條",
+  "evidence": "機關於廠商履約過程，得辦理分段查驗，其結果並得供驗收之用。"
+ },
+ "tf-05-0045": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "不宜於契約中訂定「本工程無物價指數調整規定」之條款，以降低雙方風險負擔"
+ },
+ "tf-05-0046": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0047": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "一、水管及電氣工程所占預算金額預估達查核金額以上者，分開辦理招標。"
+ },
+ "tf-05-0048": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0057": {
+  "verdict": "pass",
+  "source": "施行細則第73條",
+  "evidence": "合於招標文件規定之投標廠商僅有一家或採議價方式辦理，須限制減價次數者，應先通知廠商。"
+ },
+ "tf-05-0058": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "依前項計算之服務費用，應參酌一般收費情形核實議定"
+ },
+ "tf-05-0059": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0060": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0061": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "新增工程項目單價編列方式，應以原預算相關單價分析資料為基礎，並考慮市場價格波動情形"
+ },
+ "tf-05-0064": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0067": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0068": {
+  "verdict": "pass",
+  "source": "政府採購法第85-1條",
+  "evidence": "機關與廠商因履約爭議未能達成協議者，得以下列方式之一處理：一、向採購申訴審議委員會申請調解。二、向仲裁機構提付仲裁。"
+ },
+ "tf-05-0073": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "應先審查資格文件。 資格不合於招標文件之規定者，其他部分不予審查"
+ },
+ "tf-05-0075": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0079": {
+  "verdict": "pass",
+  "source": "政府採購法第24條",
+  "evidence": "前項所稱統包，指將工程或財物採購中之設計與施工、供應、安裝或一定期間之維修等併於同一採購契約辦理招標"
+ },
+ "tf-05-0080": {
+  "verdict": "pass",
+  "source": "施行細則第22條",
+  "evidence": "所稱無合格標，指審標結果無廠商合於招標文件規定。但有廠商異議或申訴在處理中者，均不在此限"
+ },
+ "tf-05-0081": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "並送請主辦單位處理後，再行辦理招標公告作業。前項廠商或民眾意見之處理，應以公開方式辦理"
+ },
+ "tf-05-0083": {
+  "verdict": "pass",
+  "source": "政府採購法第52條",
+  "evidence": "機關辦理公告金額以上之專業服務、技術服務、資訊服務、社會福利服務或文化創意服務者，以不訂底價之最有利標為原則"
+ },
+ "tf-05-0088": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0091": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0092": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0093": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0094": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0095": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0105": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0107": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0108": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "第一項第二款公費，應為定額，不得按直接薪資及管理費之金額依一定比率增加"
+ },
+ "tf-05-0112": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0113": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "僅限於水管工程及電氣工程，即一般工程實務上所慣稱之水電工程，不包括「空調工程」、「電梯工程」"
+ },
+ "tf-05-0114": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0115": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0117": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0119": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0121": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0124": {
+  "verdict": "fail",
+  "source": "解析",
+  "evidence": "1.新臺幣二千萬元以上未達二億元之工程，至少一人。",
+  "fix": "2千萬元以上未達2億元"
+ },
+ "tf-05-0125": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0129": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0131": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0133": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "倘初驗結果不符情形於後續驗收程序確認無法改善者，適用本法第72條減價收受之規定"
+ },
+ "tf-05-0134": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0136": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0137": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0139": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0142": {
+  "verdict": "pass",
+  "source": "政府採購法第52條",
+  "evidence": "機關辦理公告金額以上之專業服務、技術服務、資訊服務、社會福利服務或文化創意服務者，以不訂底價之最有利標為原則"
+ },
+ "tf-05-0143": {
+  "verdict": "pass",
+  "source": "政府採購法第52條",
+  "evidence": "機關辦理公告金額以上之專業服務、技術服務、資訊服務、社會福利服務或文化創意服務者，以不訂底價之最有利標為原則"
+ },
+ "tf-05-0147": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0151": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0152": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0155": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "但公會會員證，廠商得標後應依我國法令規定取得"
+ },
+ "tf-05-0156": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0158": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0162": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0163": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "外國人依我國法律應技師考試及格者，得依第五條規定請領技師證書"
+ },
+ "tf-05-0166": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0167": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0168": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0169": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "但有二家以上廠商為同一優勝順序者，擇配分最高之評選項目之得分合計值較高者，優先議價"
+ },
+ "tf-05-0170": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "機關委託廠商辦理新建建築物之技術服務，其服務費用之採購金額在新臺幣五百萬元以上"
+ },
+ "tf-05-0171": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0172": {
+  "verdict": "pass",
+  "source": "政府採購法第58條",
+  "evidence": "機關辦理採購採最低標決標時，如認為最低標廠商之總標價或部分標價偏低，顯不合理"
+ },
+ "tf-05-0176": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "其範圍得包括實收資本額不低於招標標的預算金額之十分之一"
+ },
+ "tf-05-0177": {
+  "verdict": "unverifiable"
+ },
+ "tf-05-0184": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "查核小組查核紀錄應於七個工作天內送機關，並應將查核結果及處理情形登錄於主管機關指定之資訊網路系統列管追蹤"
+ },
+ "tf-06-0002": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "通知最低標提出說明，不得未經說明而逕行通知最低標提出擔保"
+ },
+ "tf-06-0005": {
+  "verdict": "pass",
+  "source": "政府採購法第26條",
+  "evidence": "但無法以精確之方式說明招標要求，而已在招標文件內註明諸如「或同等品」字樣者，不在此限"
+ },
+ "tf-06-0006": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "應依政府採購法施行細則第65條允許分項報價及分項決標，不宜採非複數決標由同一廠商供應"
+ },
+ "tf-06-0007": {
+  "verdict": "unverifiable"
+ },
+ "tf-06-0008": {
+  "verdict": "pass",
+  "source": "施行細則第59條",
+  "evidence": "機關發現廠商投標文件所標示之分包廠商，於截止投標或截止收件期限前屬本法第一百零三條第一項規定期間內不得參加投標"
+ },
+ "tf-06-0009": {
+  "verdict": "pass",
+  "source": "施行細則第59條",
+  "evidence": "機關發現廠商投標文件所標示之分包廠商，於截止投標或截止收件期限前屬本法第一百零三條第一項規定期間內不得參加投標"
+ },
+ "tf-06-0012": {
+  "verdict": "pass",
+  "source": "政府採購法第67條",
+  "evidence": "前項情形，分包廠商就其分包部分，與得標廠商連帶負瑕疵擔保責任"
+ },
+ "tf-06-0013": {
+  "verdict": "unverifiable"
+ },
+ "tf-06-0016": {
+  "verdict": "unverifiable"
+ },
+ "tf-06-0017": {
+  "verdict": "pass",
+  "source": "施行細則第73條",
+  "evidence": "合於招標文件規定之投標廠商僅有一家或採議價方式辦理，須限制減價次數者，應先通知廠商。"
+ },
+ "tf-06-0018": {
+  "verdict": "pass",
+  "source": "施行細則第73條",
+  "evidence": "合於招標文件規定之投標廠商僅有一家或採議價方式辦理，須限制減價次數者，應先通知廠商。"
+ },
+ "tf-06-0019": {
+  "verdict": "pass",
+  "source": "解析",
+  "evidence": "我國廠商所供應財物或勞務之原產地非屬我國者，視同外國廠商"
+ },
+ "tf-06-0020": {
+  "verdict": "unverifiable"
+ },
+ "tf-06-0023": {
+  "verdict": "pass",
+  "source": "施行細則第67條",
+  "evidence": "合於決標原則之廠商無需減價或已完成減價或綜合評選程序者，得不通知投標廠商到場"
+ }
+}

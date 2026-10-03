@@ -8,7 +8,7 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
-測試：`python -m unittest discover -s tests` 28 條全綠（2026-10-02，本機 Python 3.11.9，中位數 37 秒；相依先裝 `pip install -r requirements.txt`）；
+測試：`python -m unittest discover -s tests` 30 條全綠（2026-10-03，本機 Python 3.11.9，約 39 秒；相依先裝 `pip install -r requirements.txt`）；
 網站邏輯 `npm test`（在 `web/`）25 條全綠（Node 24）。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試與網站建置，CI 跑的是同一支。
 
 ## 網站
@@ -29,6 +29,8 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 第二輪獨立核對線索，只認該題（或相鄰成對題）的解析、法條欄、審查註記與政府採購法、施行細則全文，引文由程式逐字比對。
 通過 1,011 段、改標 16 段後上線 1,027 段，無法核對的 494 段不標。全部合計 74% 題目有標記，每題最多 5 處。
 已知限制：線索在作答前就顯示，是非題答 X 的線索就是錯處；依據不在手邊的辦法與函釋的題目，線索一律未上線。
+核對紀錄在 `data/review/work/highlight/`（指示在 `docs/審查指示/指示-重點字*.md`），`python tools/review/highlight_check.py` 逐條驗依據引文並重建微調，
+與 `highlight-fixes.json` 不同就退出非零，Python 測試會跑它。要改線索或微調，先改紀錄再重建，不要只改 `highlight-fixes.json`。
 外觀原型在 `web/prototype/highlight-style.html`。
 
 練習紀錄（每題答對、答錯、猜對與連續答對次數）只存在該裝置瀏覽器的 localStorage，換手機或清除瀏覽資料就沒了；
