@@ -241,19 +241,21 @@ class OfficialCrossCheck(unittest.TestCase):
         with self.assertRaisesRegex(BankError, "採購契約"):
             official.cross_check(self.rtf, pdf)
 
-    def test_changed_pdf_is_not_served_from_cache(self):
-        # 守上面的 PDF 快取：同一組課程名、內容不同的 PDF 必須重抽（截斷的檔抽不出來就該擲例外）
-        names = {c for _, c in self.rtf}
-        with tempfile.TemporaryDirectory() as d:
-            p = Path(d) / "official.pdf"
-            p.write_bytes((SRC / "official.pdf").read_bytes()[:4096])
-            with self.assertRaises(Exception):
-                official.read_pdf_answers(p, names)
-
 
 class SourceCache(unittest.TestCase):
-    """守上面的 RTF 與 xlsx 快取：同一路徑的檔內容一改就要重新解析。鍵若只看路徑，改了檔還會拿到舊結果，
-    破壞型測試就會假綠（這條與 PDF 那條不同：先用原內容填快取、再覆蓋同一路徑，才分得出鍵是內容還是路徑）。"""
+    """守上面的 PDF、RTF 與 xlsx 快取：同一路徑的檔內容一改就要重新解析。鍵若只看路徑，改了檔還會拿到舊結果，
+    破壞型測試就會假綠。三條都先用原內容讀一次填快取、再覆蓋同一路徑讀第二次——寫到新路徑的版本路徑鍵也會過，分不出鍵是什麼。"""
+
+    def test_changed_pdf_at_same_path_is_reread(self):
+        names = {c for _, c in official.read_rtf(SRC / "official.rtf")[1]}
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "official.pdf"
+            shutil.copy(SRC / "official.pdf", p)
+            official.read_pdf_answers(p, names)  # 內容同原檔：內容鍵直接命中、路徑鍵在這裡填進去
+            p.write_bytes(p.read_bytes()[:4096])
+            # 截斷的 PDF 抽不出題目就該擲例外；拿到舊結果就是快取鍵沒含內容
+            with self.assertRaises(Exception, msg="同一路徑的 PDF 換成截斷的內容，read_pdf_answers 仍回舊結果"):
+                official.read_pdf_answers(p, names)
 
     def test_changed_rtf_and_xlsx_at_same_path_are_reparsed(self):
         with tempfile.TemporaryDirectory() as d:
