@@ -4,7 +4,7 @@ const GOLD = '240,212,138', GOLD_HI = '255,236,170';
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 let cv, cx, W = 0, H = 0, DPR = 1, reduced = false, avoid = null;
-let stars = [], groups = [], shoot = null, nextShoot = 4, last = 0;
+let stars = [], groups = [], shoot = null, nextShoot = 4, last = 0, due = 0;
 const sparks = [];
 
 /* 光點先畫成一張小圖，之後每格只貼圖；原本每顆星每格都建一次放射漸層，手機上整張畫布很吃力 */
@@ -96,10 +96,13 @@ function frame(dt, t){
 }
 
 function loop(now){
+  requestAnimationFrame(loop);
+  // 120 Hz 以上的螢幕也只畫約 60 格（使用者 2026-10-03 同意）；用排程時刻而非間隔判斷，90 Hz 才不會掉成 45 格
+  if (now < due - 2) return;
+  due = Math.max(due, now - 17) + 1000 / 60;
   const dt = Math.min((now - last) / 1000, .05); last = now;
   if (W !== innerWidth || H !== innerHeight) size();  // 開頁當下視窗尺寸可能還是 0，resize 事件不一定會補發
   frame(dt, now / 1000);
-  requestAnimationFrame(loop);
 }
 
 export function start(canvas){

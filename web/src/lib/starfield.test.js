@@ -36,6 +36,19 @@ test('星圖畫布跟著視窗大小，每格都有畫出光點', () => {
   assert.equal(cv.width, -1);
 });
 
+test('高更新率螢幕只畫約 60 格：120／90／60 Hz 各跑 1 秒', () => {
+  let t = performance.now() + 1000;  // 時間只能往前走，三種更新率接著跑
+  for (const hz of [120, 90, 60]){
+    let drawn = 0;
+    t += 100; tick(t);  // 先對齊排程
+    for (let i = 0; i < hz; i++){
+      t += 1000 / hz; calls.drawImage = 0; tick(t);
+      if (calls.drawImage > 0) drawn++;
+    }
+    assert.ok(drawn >= 57 && drawn <= Math.min(hz, 61), `${hz} Hz 一秒畫了 ${drawn} 格`);
+  }
+});
+
 // 減少動態效果時只畫一格靜態星空；轉向或改視窗大小會重設畫布（等於清空），要補畫
 test('減少動態效果：改視窗大小後星空仍在', async () => {
   let onResize = null;
