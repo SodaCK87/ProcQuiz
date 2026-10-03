@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pool, pick, mulberry32, deckKey, COOLDOWN } from './deck.js';
+import { pool, pick, mulberry32, deckKey, COOLDOWN, isCorrect, draw } from './deck.js';
 import { empty, load, save, saveWithNotice, SAVE_FAILED, record, stats, statsByPrefix, isWrong, isMastered, streak, markGuess, MASTER } from './progress.js';
 import { buildIndex } from './bank-index.js';
 
@@ -96,6 +96,28 @@ test(`錯題少於 ${COOLDOWN + 1} 題時穿插別的題目，同一題至少隔
     }
     assert.ok(hits >= 300 * wrong.length / (COOLDOWN + wrong.length) - 1, `錯題出現 ${hits} 次，應該一冷卻完就回來`);
   }
+});
+
+test('判對錯：數字選項對字串答案、O／X 照字面；型別不同也算對（A-05）', () => {
+  assert.equal(isCorrect(1, '1'), true);
+  assert.equal(isCorrect('1', '1'), true);
+  assert.equal(isCorrect(2, '1'), false);
+  assert.equal(isCorrect('O', 'O'), true);
+  assert.equal(isCorrect('X', 'O'), false);
+  assert.equal(isCorrect(null, 'O'), false);
+});
+
+test('出題：全部模式不標穿插；錯題模式錯題用完時穿插同範圍其他題並標 mixed；範圍空了回 null', () => {
+  const qs = [{ id: 'a', course: 1 }, { id: 'b', course: 1 }, { id: 'c', course: 2 }];
+  const p = empty(); record(p, 'a', false);
+  const rnd = mulberry32(7);
+  const all = draw(qs, 1, 'all', p.answers, [], rnd);
+  assert.ok(['a', 'b'].includes(all.cur)); assert.equal(all.mixed, false);
+  const wrong = draw(qs, 1, 'wrong', p.answers, [], rnd);
+  assert.deepEqual(wrong, { cur: 'a', mixed: false });
+  const filler = draw(qs, 1, 'wrong', p.answers, ['a'], rnd);  // 唯一的錯題剛出過在冷卻，穿插 b
+  assert.deepEqual(filler, { cur: 'b', mixed: true });
+  assert.equal(draw(qs, 3, 'all', p.answers, [], rnd), null);
 });
 
 test('deckKey 區分題型、課程、出題範圍', () => {

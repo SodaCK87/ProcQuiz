@@ -9,7 +9,7 @@
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ ，尚未在手機實機操作過。進度見 [目標路線圖.md](目標路線圖.md)。
 測試：`python -m unittest discover -s tests` 42 條全綠（2026-10-04，本機 Python 3.11.9，約 32 秒；相依先裝 `pip install -r requirements.txt`）；
-網站邏輯 `npm test`（在 `web/`）33 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
+網站邏輯 `npm test`（在 `web/`）35 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 
 ## 網站
 
@@ -17,11 +17,12 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 
 1. `npm run dev`：本機預覽，開 http://localhost:5173 。
 2. `npm run build`：產出 `web/dist/`。上線不必手動：推上 main 後 `.github/workflows/pages.yml` 跑 `python tools/run_gate.py`（Python 測試含「已提交的題庫 JSON 等於重跑轉檔結果」、`npm test`、建置、建置產出檢查），全部通過才發布到 GitHub Pages。頁尾的「程式 vX.Y.Z（commit）」由 `web/vite.config.js` 在建置時填入。
-3. `npm test`：加權出題、錯題判定、練習紀錄、首頁課程清單、背景星圖、題目重點字、卡面樣式規則順序、全域錯誤提示的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
+3. `npm test`：加權出題、判對錯、錯題判定、練習紀錄、首頁課程清單、背景星圖、題目重點字、卡面樣式規則順序、全域錯誤提示的單元測試，會讀真的題庫 JSON 核對每課程題數與題號前綴。
 4. 對比探針：建置後在 repo 根目錄 `node tools/measure_browser.mjs contrast serve:web/dist`，用無頭 Chrome 量選題頁與卡面文字對實際底色的 WCAG 對比（一般字 4.5、大字 3，卡面在 5 個動畫時間點取最差），任一處低於門檻的面積超過 5% 就退出非零。2026-10-03 調色後退出 0（PQZ-08 已修）；改任何顏色、紋理或動畫都要重跑。不在 `run_gate.py` 裡，要本機 Chrome。
 5. 全域錯誤提示：沒被 catch 的例外或沒處理的 rejection 會在畫面最上方出中文訊息（帶程式版本、commit 與回報連結），邏輯在 `web/src/lib/fatal.js`、`npm test` 守；`node tools/measure_browser.mjs errors serve:web/dist` 在建置後的網站裡故意擲錯，確認訊息真的出現。
 6. 紀錄存不進去的提示：練習紀錄寫不進 localStorage 時（無痕模式、儲存空間滿、被封鎖），作答後畫面上方提示一句「這次的作答不會被記住」，下一次存成功就收掉；判斷在 `web/src/lib/progress.js` 的 `saveWithNotice`、`npm test` 守，`node tools/measure_browser.mjs storage serve:web/dist` 在建置後的網站把 `setItem` 換成擲例外後作答，確認提示真的出現、正常作答時沒有。
 7. 鍵盤焦點：看不見的那一面卡片設 `inert`，Tab 不會停在它的按鈕上（否則按 Enter 等於跳題）；題型與出題分段鈕的焦點環畫在鈕內側，不被圓角容器裁掉。`node tools/measure_browser.mjs focus serve:web/dist` 在選題頁、卡面正面、翻到背面各按 Tab 8 次核對。
+8. 互動層：判對錯與出下一題抽成 `web/src/lib/deck.js` 的純函式進 `npm test`；`node tools/measure_browser.mjs interact serve:web/dist` 把題庫 chunk 刪掉再開頁要出「題庫下載失敗」、作答後立刻離開頁面紀錄要已寫入、重點字微調要等題庫到手才下載、LINE 內建瀏覽器要轉到外部瀏覽器。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
 

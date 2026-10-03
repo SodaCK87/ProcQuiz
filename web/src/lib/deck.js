@@ -47,3 +47,15 @@ export function pick(ids, answers, recent, rnd = Math.random, filler = null){
 }
 
 export const deckKey = (kind, course, mode) => `${kind}:${course}:${mode}`;
+
+/** 判對錯：選項以數字 1–4、是非以 O／X 記，題庫的 answer 是字串，統一成字串比。抽成純函式是為了進 npm test（全面盤點 A-05） */
+export const isCorrect = (val, answer) => String(val) === String(answer);
+
+/** 出下一題：錯題模式下答對的題目可能已離開錯題，所以每題都重抓範圍；錯題少到全在冷卻中時穿插同範圍其他題（mixed 標記這題是穿插的）。
+ *  回傳 { cur, mixed }，範圍空了回 null（外層切到完成畫面） */
+export function draw(questions, course, mode, answers, recent, rnd = Math.random){
+  const ids = pool(questions, course, mode, answers);
+  const filler = mode === 'wrong' ? pool(questions, course, 'all', answers) : null;
+  const cur = pick(ids, answers, recent, rnd, filler);
+  return cur && { cur, mixed: mode === 'wrong' && !isWrong(answers[cur]) };
+}

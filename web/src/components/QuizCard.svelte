@@ -3,6 +3,7 @@
   import CardFace from './CardFace.svelte';
   import { burst, setAvoid } from '../lib/starfield.js';
   import { segments } from '../lib/highlight.js';
+  import { isCorrect } from '../lib/deck.js';
 
   /** onresult(ok) 作答當下呼叫；onguess() 答對後標記是猜的；onnext() 換下一題（由外層改 question）；marks 為是否標重點字，fix 為這題的逐題微調 */
   let { question, kindLabel, courseName, onresult, onguess, onnext, marks = true, fix = null } = $props();
@@ -12,7 +13,7 @@
 
   let slot, card, floor, aura, front, back;
   let answered = $state(false), chosen = $state(null), revealed = $state(false), guessed = $state(false), busy = false;
-  let isOk = $derived(answered && String(chosen) === String(question.answer));
+  let isOk = $derived(answered && isCorrect(chosen, question.answer));
   let stem = $derived(marks ? segments(question.stem, fix) : [{ t: question.stem, hit: false }]);
   let choices = $derived(question.options ? question.options.map((t, k) => [k + 1, t]) : [['O', null], ['X', null]]);
 
@@ -85,7 +86,7 @@
   function answer(val){
     if (answered || busy) return;
     chosen = val; answered = true;
-    onresult(String(val) === String(question.answer));
+    onresult(isCorrect(val, question.answer));
     flipTo(S.theta + 180, () => {
       revealed = true;
       const seal = back.querySelector('.seal');
@@ -137,8 +138,8 @@
           {#each choices as [val, text]}
             <button class="btn"
               class:chosen={chosen === val}
-              class:is-ans={revealed && String(val) === String(question.answer)}
-              class:is-wrong={revealed && chosen === val && String(val) !== String(question.answer)}
+              class:is-ans={revealed && isCorrect(val, question.answer)}
+              class:is-wrong={revealed && chosen === val && !isCorrect(val, question.answer)}
               disabled={answered}
               onclick={() => answer(val)}>
               {#if text}<span class="no">{val}</span><span>{text}</span>{:else}{val}{/if}

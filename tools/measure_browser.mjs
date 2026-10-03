@@ -21,6 +21,8 @@
 //              要出現提到「紀錄」的提示且不是全域錯誤提示，否則退出 1
 //   focus      鍵盤焦點（全面盤點 A-03）：選題頁、卡面正面、翻到背面各按 Tab 8 次，焦點不能落在 aria-hidden 的那一面；
 //              題型／出題分段鈕的焦點環要畫在 .seg（overflow:hidden）裡面，否則退出 1
+//   interact   互動層（全面盤點 A-05）：複製 dist 刪掉是非題題庫 chunk 再開頁按開始要出「題庫下載失敗」、原 dist 不出且出卡；作答後同一個 task 裡
+//              派 pagehide 要已寫進 localStorage；重點字微調要等題庫到手才下載；UA 含 Line/ 時要轉到 ?openExternalBrowser=1，任一不符退出 1
 //
 // 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
 // Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
@@ -28,7 +30,7 @@
 // --variants 例：'{"現況":"","拿掉暫停":".dormant::before,.dormant *{animation-play-state:running!important}"}'
 // 主緒佔用的量法：連續排 1 ms 的忙迴圈，數排進幾塊，佔用率＝1－排進的毫秒數÷總時間；含樣式、版面、繪製記錄，不含 GPU。
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
@@ -39,8 +41,8 @@ import { gzipSync } from 'node:zlib';
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage|focus> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage', 'focus'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage|focus|interact> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage', 'focus', 'interact'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
@@ -417,4 +419,37 @@ if (mode === 'focus'){
   const ringOk = segs.length >= 2 && segs.every(f => f.ring.style !== 'none' && f.ring.inside);
   const ok = bad.length === 0 && ringOk && out.卡面正面.some(f => /^[OX1]$/.test(f.text)) && out.翻到背面.some(f => /看題目|下一題/.test(f.text));
   finish({ 通過: ok, 落在隱藏面: bad.map(f => f.text), 分段鈕數: segs.length, 焦點環在容器內: ringOk, ...out }, ok ? 0 : 1);
+}
+
+if (mode === 'interact'){
+  // 互動層（A-05）。serve:<dir> 才能做「刪 chunk」：把 dist 複製到暫存目錄、刪掉 true-false-*.js 後另開一個靜態伺服器
+  const distArg = process.argv[3];
+  if (!distArg.startsWith('serve:')){ finish({ 錯誤: 'interact 模式只接受 serve:<資料夾>，要能複製後刪 chunk' }, 2); await sleep(2000); }
+  const broken = mkdtempSync(join(tmpdir(), 'pqz-broken-'));
+  cpSync(resolve(distArg.slice(6)), broken, { recursive: true });
+  const chunks = readdirSync(join(broken, 'assets')).filter(f => /^true-false-.*\.js$/.test(f));
+  for (const f of chunks) unlinkSync(join(broken, 'assets', f));
+  const brokenUrl = await serveDir(broken);
+  const ALERTS = `[...document.querySelectorAll('[role=alert]')].map(e => e.textContent.trim())`;
+  const out = { 刪掉的chunk: chunks };
+  await open(brokenUrl, 2500); await startQuiz();
+  out.刪chunk後 = { 提示: await ev(ALERTS), 出卡: await ev(`!!document.querySelector('.face.front .stem')`) };
+  await open(urls[0], 2500); await startQuiz();
+  out.原dist = { 提示: await ev(ALERTS), 出卡: await ev(`!!document.querySelector('.face.front .stem')`) };
+  // 微調等題庫：highlight-fixes 的請求要在題庫 chunk 回來之後才發出
+  out.微調晚於題庫 = await ev(`(() => { const es = performance.getEntriesByType('resource'); const bank = es.find(e => /true-false-/.test(e.name)), fix = es.find(e => /highlight-fixes-/.test(e.name));
+    return bank && fix ? +(fix.startTime - bank.responseEnd).toFixed(0) : null; })()`);
+  // pagehide：作答與派事件在同一個 task 裡，閒置回呼沒機會先存；拿到的紀錄就是 pagehide 寫的
+  out.pagehide後紀錄 = await ev(`(() => { localStorage.removeItem('pqz:progress:v1'); (__find('O') || __find('1')).click(); dispatchEvent(new Event('pagehide'));
+    const p = JSON.parse(localStorage.getItem('pqz:progress:v1') || 'null'); return p ? Object.keys(p.answers).length : null; })()`);
+  // LINE 內建瀏覽器：UA 含 Line/ 時 main.js 要改網址帶 openExternalBrowser=1
+  const ua = await ev('navigator.userAgent');
+  await send('Emulation.setUserAgentOverride', { userAgent: ua + ' Line/14.0.0' });
+  await open(urls[0], 2000);
+  out.LINE轉址 = await ev('location.search');
+  await send('Emulation.setUserAgentOverride', { userAgent: ua });
+  const ok = out.刪chunk後.提示.some(t => /題庫下載失敗/.test(t)) && !out.刪chunk後.出卡 && out.原dist.提示.length === 0 && out.原dist.出卡
+    && out.微調晚於題庫 !== null && out.微調晚於題庫 >= 0 && out.pagehide後紀錄 === 1 && /openExternalBrowser=1/.test(out.LINE轉址);
+  try { rmSync(broken, { recursive: true, force: true }); } catch {}
+  finish({ 通過: ok, ...out }, ok ? 0 : 1);
 }

@@ -4,8 +4,8 @@
   import StartScreen from './components/StartScreen.svelte';
   import { start as startStars } from './lib/starfield.js';
   import { bakeTextures } from './lib/textures.js';
-  import { load, saveWithNotice, record, markGuess, stats, isWrong, MASTER } from './lib/progress.js';
-  import { pool, pick, deckKey } from './lib/deck.js';
+  import { load, saveWithNotice, record, markGuess, stats, MASTER } from './lib/progress.js';
+  import { draw, deckKey } from './lib/deck.js';
   import { loadOn, saveOn } from './lib/highlight.js';
   import { ISSUES } from './lib/fatal.js';
   import INDEX from 'virtual:bank-index';
@@ -78,19 +78,11 @@
       try { await ensure(k); } catch { return; } finally { starting = false; }
       if (k !== kind) return;
     }
-    const next = draw(banks[k].questions, []);
+    const next = draw(banks[k].questions, course, mode, progress.answers, []);
     if (!next) return;
     deck = { key: deckKey(k, course, mode), ...next, recent: [] };
     view = 'quiz';
     scrollTo(0, 0);
-  }
-
-  // 錯題模式下答對的題目可能已經離開錯題，所以每題都重抓範圍
-  function draw(questions, recent){
-    const ids = pool(questions, course, mode, progress.answers);
-    const filler = mode === 'wrong' ? pool(questions, course, 'all', progress.answers) : null;
-    const cur = pick(ids, progress.answers, recent, Math.random, filler);
-    return cur && { cur, mixed: mode === 'wrong' && !isWrong(progress.answers[cur]) };
   }
 
   function onresult(ok){ record(progress, question.id, ok); persist(); }
@@ -98,7 +90,7 @@
 
   function onnext(){
     const recent = [...deck.recent, deck.cur].slice(-10);
-    const next = draw(bank.questions, recent);
+    const next = draw(bank.questions, course, mode, progress.answers, recent);
     if (!next) { view = 'done'; return; }
     deck = { ...deck, ...next, recent };
   }
