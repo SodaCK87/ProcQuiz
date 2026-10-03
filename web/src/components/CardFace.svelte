@@ -64,6 +64,11 @@
       var(--gold-deep) 180deg,var(--gold) 230deg,#d9b763 258deg,var(--gold) 280deg,var(--gold-deep) 330deg);
     animation:sweep 7s linear infinite;
   }
+  /* 流光只要蓋住旋轉中的卡面：邊長＝對角線的正方形就夠，比 inset:-50% 少 45% 面積，出卡時點陣化較快 */
+  @supports (width:hypot(3px,4px)) and (width:1cqw){
+    .face{container-type:size}
+    .face::before{inset:auto;left:50%;top:50%;width:hypot(100cqw,100cqh);aspect-ratio:1;translate:-50% -50%}
+  }
   .paper{
     position:absolute;inset:4px;border-radius:14px;overflow:hidden;
     display:flex;flex-direction:column;color:var(--ink);
