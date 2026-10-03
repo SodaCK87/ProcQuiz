@@ -13,6 +13,8 @@
 //   load       開站（第 10 輪起）：每次關快取重新載入，記 TTFB、FCP、LCP、「開始練習」可按、題庫／微調／字型到手的時間與各資源傳輸量；
 //              --net fast4g 用 CDP 模擬 Fast 4G（下行 1,012,500 B/s、上行 168,750 B/s、每請求 165 ms，取自 Chromium NetworkManager.ts），配 --cpu 4
 //   next       按「下一題」（第 10 輪起）：作答後按下一題，量 1.5 s 內超過預算的幀；變體同 flip-idle，交錯進行
+//   contrast   文字對比（全面盤點 A-02、PQZ-08）：選題頁、卡面正面（故意答錯後翻回）、卡面背面的文字元素，藏字截框逐像素算 WCAG 對比，
+//              報最低值、中位數、低於門檻的面積比例；門檻一般字 4.5、大字 3；第一個變體有任一項低於門檻面積超過 --max-below（預設 5%）就退出 1
 //
 // 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
 // Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
@@ -31,8 +33,8 @@ import { gzipSync } from 'node:zlib';
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
@@ -83,7 +85,7 @@ async function ev(expr){
   if (r.result?.exceptionDetails) throw new Error(JSON.stringify(r.result.exceptionDetails).slice(0, 300));
   return r.result?.result?.value;
 }
-function finish(out){ console.log(JSON.stringify(out, null, 1)); ws.close(); chrome.kill(); for (const s of servers) s.close(); setTimeout(() => { try { rmSync(prof, { recursive: true, force: true }); } catch {} process.exit(0); }, 500); }
+function finish(out, code = 0){ console.log(JSON.stringify(out, null, 1)); ws.close(); chrome.kill(); for (const s of servers) s.close(); setTimeout(() => { try { rmSync(prof, { recursive: true, force: true }); } catch {} process.exit(code); }, 500); }
 
 /* ---------- 頁內工具 ---------- */
 const HELPERS = `
@@ -243,4 +245,107 @@ if (mode === 'next'){
   }
   finish({ fps, cpu: CPU, budgetMs: +budget.toFixed(1), summary: Object.fromEntries(names.map(k => [k, {
     下一題超過預算格數: med(out[k].map(r => r.over)), 下一題超過預算毫秒: med(out[k].map(r => r.overMs)), 最長一幀: med(out[k].map(r => r.worst)) }])), each: out });
+}
+
+if (mode === 'contrast'){
+  // 文字對比（全面盤點 A-02、PQZ-08）。量法：取元素的 computed 字色（含 rgba 與祖先 opacity），把它與子孫的字藏掉後只截這個元素的框，
+  // 逐像素把字色依透明度壓在那個像素上再算 WCAG 對比；報最低值、中位數、低於門檻的面積比例。門檻照 WCAG：一般字 4.5、
+  // 大字（≥24px，或 ≥18.66px 且粗體）3。金墨暈染會改變卡面亮度，卡面兩個狀態在幾個凍結時間各量一次取最差；星空藏掉（隨機又會動）。
+  // 第一個變體（預設「現況」）任一選擇器低於門檻的面積超過 --max-below（預設 5%）就退出 1；其餘變體只列出來比較（A／B 選色用）。
+  const MAX_BELOW = Number(opt('max-below', 5)), CARD_TIMES = [500, 1400, 3000, 6000, 9000];
+  const SEL = {
+    選題頁: ['header p', '.lbl', '.seg button[aria-pressed="true"]', '.seg button[aria-pressed="false"]', '.course .name', '.course .count', '.course .sub', '.go .btn.primary', 'footer', 'footer a'],
+    卡面正面: ['.bar span', '.bar .back', '.bar .marks', '.face.front .meta', '.face.front .stem', '.face.front .stem mark', '.face.front .tf .btn', '.face.front .mc .btn > span:not(.no)',
+      '.face.front .mc .no', '.face.front .btn.is-ans', '.face.front .btn.is-wrong', '.face.front .foot .btn'],
+    卡面背面: ['.face.back .verdict strong', '.face.back .verdict span', '.face.back .seal', '.face.back .guess', '.face.back h3', '.face.back .body > p', '.face.back .none', '.face.back .foot .btn'],
+  };
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: SEED });
+  await open(urls[0], 3500);
+  await ev('document.fonts.ready.then(()=>1)');
+  // 藏字時連同元素自己的 ::before／::after 一起藏（h3 兩側與 .meta 底下的金線是裝飾，不在字底下）
+  await ev(`(()=>{ const s=document.createElement('style'); s.textContent='.__ct,.__ct *{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important}.__ct svg,.__ct .star,.__ct::before,.__ct::after{visibility:hidden!important}canvas.stars{visibility:hidden!important}'; document.head.appendChild(s); })()`);
+  const meanRed = async clip => { const png = (await send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 1 } })).result.data;
+    return ev(`(async()=>{ const i=new Image(); await new Promise(r=>{ i.onload=r; i.src='data:image/png;base64,${png}'; }); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height;
+      const g=c.getContext('2d'); g.drawImage(i,0,0); const d=g.getImageData(0,0,c.width,c.height).data; let r=0,gg=0,b=0,n=d.length/4; for(let k=0;k<d.length;k+=4){ r+=d[k]; gg+=d[k+1]; b+=d[k+2]; } return r/n>200&&gg/n<60&&b/n<60; })()`); };
+  // 校正：clip 的 x、y 是視窗座標還是文件座標，CDP 文件沒寫清楚；放一塊紅色固定元素、把頁面捲下去，看哪一組座標截得到它
+  await ev(`(()=>{ const d=document.createElement('div'); d.id='__cal'; d.style.cssText='position:fixed;left:10px;top:300px;width:40px;height:40px;background:#f00;z-index:99999'; document.body.appendChild(d); document.documentElement.style.minHeight='3000px'; scrollTo(0,400); })()`);
+  await sleep(150);
+  const viewportClip = await meanRed({ x: 10, y: 300, width: 40, height: 40 }), pageClip = !viewportClip && await meanRed({ x: 10, y: 700, width: 40, height: 40 });
+  await ev(`(()=>{ document.getElementById('__cal').remove(); document.documentElement.style.minHeight=''; scrollTo(0,0); })()`);
+  if (!viewportClip && !pageClip){ finish({ 錯誤: '截圖座標校正失敗：視窗座標與文件座標都截不到紅色方塊' }, 1); await sleep(2000); }
+  const PREP = `(sel, i) => { const el = [...document.querySelectorAll(sel)].filter(e => e.getClientRects().length)[i]; if (!el) return null;
+    el.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const cs = getComputedStyle(el), m = cs.color.match(/[\\d.]+/g).map(Number); let op = 1; for (let n = el; n; n = n.parentElement) op *= parseFloat(getComputedStyle(n).opacity);
+    const size = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight) >= 700, large = size >= 24 || (size >= 18.66 && bold);
+    el.classList.add('__ct'); const r = el.getBoundingClientRect();
+    // 只截內容框：邊框與 padding 不是字所在的地方，按鈕的金色邊框與字同色會被算成對比 1
+    const [t, rt, b, l] = ['Top', 'Right', 'Bottom', 'Left'].map(s => parseFloat(cs['border' + s + 'Width']) + parseFloat(cs['padding' + s]));
+    return { rgb: m.slice(0, 3), alpha: (m[3] ?? 1) * op, size, threshold: large ? 3 : 4.5, text: el.textContent.trim().slice(0, 12),
+      rect: { x: r.left + l + ${pageClip ? 'scrollX' : 0}, y: r.top + t + ${pageClip ? 'scrollY' : 0}, width: r.width - l - rt, height: r.height - t - b } }; }`;
+  const STATS = `async (png, rgb, alpha, threshold) => { const img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = 'data:image/png;base64,' + png; });
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data, f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }, lum = (r, g2, b) => .2126 * f(r) + .7152 * f(g2) + .0722 * f(b);
+    const ratios = new Float32Array(d.length / 4); let below = 0;
+    for (let k = 0, j = 0; k < d.length; k += 4, j++){ const br = d[k], bg = d[k + 1], bb = d[k + 2];
+      const l1 = lum(rgb[0] * alpha + br * (1 - alpha), rgb[1] * alpha + bg * (1 - alpha), rgb[2] * alpha + bb * (1 - alpha)), l2 = lum(br, bg, bb);
+      const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05); ratios[j] = ratio; if (ratio < threshold) below++; }
+    ratios.sort(); document.querySelectorAll('.__ct').forEach(e => e.classList.remove('__ct'));
+    return { pixels: ratios.length, min: +ratios[0].toFixed(2), median: +ratios[ratios.length >> 1].toFixed(2), below }; }`;
+  async function measure(selectors){
+    const out = {};
+    for (const sel of selectors){
+      const acc = { elements: 0, pixels: 0, below: 0, min: Infinity, medians: [], threshold: null, sample: '' };
+      for (let i = 0; i < 8; i++){
+        const p = await ev(`(${PREP})(${JSON.stringify(sel)}, ${i})`);
+        if (!p) break;
+        if (p.rect.width < 1 || p.rect.height < 1){ await ev(`document.querySelectorAll('.__ct').forEach(e=>e.classList.remove('__ct'))`); continue; }
+        await sleep(30);
+        const shot = (await send('Page.captureScreenshot', { format: 'png', clip: { ...p.rect, scale: 1 } })).result.data;
+        const s = await ev(`(${STATS})(${JSON.stringify(shot)}, ${JSON.stringify(p.rgb)}, ${p.alpha}, ${p.threshold})`);
+        acc.elements++; acc.pixels += s.pixels; acc.below += s.below; acc.min = Math.min(acc.min, s.min); acc.medians.push(s.median); acc.threshold = p.threshold; acc.sample ||= p.text;
+      }
+      // 同一選擇器多個元素時：最低取全部最低、面積比例合計、中位取最差那個元素的中位（取整體中位會被好的元素蓋掉）
+      if (acc.elements) out[sel] = { 元素: acc.elements, 門檻: acc.threshold, 最低: acc.min, 最差元素中位: Math.min(...acc.medians), 低於門檻面積pct: +(100 * acc.below / acc.pixels).toFixed(1), 例: acc.sample };
+    }
+    return out;
+  }
+  const names = Object.keys(VARIANTS), result = {}, fails = [];
+  async function state(label, selectors, times){
+    for (const k of names){
+      await ev(`__style(${JSON.stringify(VARIANTS[k])})`); await sleep(100);
+      const worst = {};
+      for (const t of times){
+        await ev(`document.getAnimations().forEach(a=>{ a.pause(); a.currentTime=${t}; })`); await sleep(60);
+        for (const [sel, v] of Object.entries(await measure(selectors))){
+          const w = worst[sel];
+          if (!w || v.低於門檻面積pct > w.低於門檻面積pct || (v.低於門檻面積pct === w.低於門檻面積pct && v.最低 < w.最低)) worst[sel] = { ...v, 凍結ms: t };
+        }
+      }
+      (result[k] ??= {})[label] = worst;
+      if (k === names[0]) for (const [sel, v] of Object.entries(worst)) if (v.低於門檻面積pct > MAX_BELOW) fails.push(`${label} ${sel}：${v.低於門檻面積pct}% 低於 ${v.門檻}（最低 ${v.最低}，例「${v.例}」）`);
+    }
+    await ev(`__style('')`);
+  }
+  // 故意答錯才看得到 .is-wrong：從頁面已下載的題庫模組查這題的答案，按另一個
+  const ANSWER_WRONG = kind => `(async()=>{ const m=performance.getEntriesByType('resource').find(e=>/${kind}-.*\\.js$/.test(e.name)); const bank=(await import(m.name)).default;
+    const meta=document.querySelector('.face.front .meta').textContent, no=+meta.match(/第 (\\d+) 題/)[1], course=meta.split('・')[1];
+    const cid=bank.courses.find(c=>c.name===course).id, q=bank.questions.find(q=>q.course===cid&&q.no===no);
+    if (q.options){ const n=String(q.answer % 4 + 1); [...document.querySelectorAll('.face.front .mc .btn')].find(b=>b.querySelector('.no').textContent.trim()===n).click(); return n; }
+    const w = q.answer==='O' ? 'X' : 'O'; __find(w).click(); return w; })()`;
+  async function card(label, kind){
+    await ev(ANSWER_WRONG(kind)); await sleep(1700);
+    await ev(`__find('看題目').click()`); await sleep(1700);   // 翻回正面：這時正面同時有 .is-ans 與 .is-wrong
+    await state(`卡面正面（${label}）`, SEL.卡面正面, CARD_TIMES);
+    await ev(`__find('看答案').click()`); await sleep(1700);
+    await state(`卡面背面（${label}）`, SEL.卡面背面, CARD_TIMES);
+  }
+  await state('選題頁', SEL.選題頁, [0]);
+  await startQuiz();
+  await card('是非題', 'true-false');
+  await ev(`__find('‹ 選題').click()`); await sleep(400);
+  await ev(`__find('選擇題').click()`); await sleep(300);
+  await startQuiz();
+  await card('選擇題', 'multiple-choice');
+  finish({ 規則: `門檻：一般字 4.5、大字（≥24px 或 ≥18.66px 粗體）3；低於門檻面積超過 ${MAX_BELOW}% 判紅；卡面在 ${CARD_TIMES.join('、')} ms 凍結各量一次取最差；星空藏掉`,
+    截圖座標: pageClip ? '文件' : '視窗', 紅: fails, 通過: fails.length === 0, 結果: result }, fails.length ? 1 : 0);
 }
