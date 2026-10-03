@@ -19,7 +19,7 @@
   /* ---------- 光影翻轉（定案樣式）：所有狀態在 S，一條 rAF 迴圈逐格算 ---------- */
   const S = { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, prevDiff: 0, onLand: null };
   let shades = [], sheens = [], bars = [], running = false, last = 0, shownFront = null;
-  let dormantFront = $state(false), dormantBack = $state(true);
+  let flipping = $state(false), dormantFront = $state(false), dormantBack = $state(true);
 
   function render(){
     if (!card) return;
@@ -59,7 +59,7 @@
   function tickFrame(now){
     const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
     step(dt); render();
-    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else { running = false; rest(); }
+    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else { running = false; flipping = false; rest(); }
   }
 
   // 背對畫面的那面暫停常駐動畫：看不到，卻照樣每幀重算與合成
@@ -69,7 +69,7 @@
     S.onLand = onLand || null;
     if (reduced){ S.theta = target; render(); land(); return; }
     S.mode = 'spring'; S.target = target; S.landed = false; S.prevDiff = S.theta - target;
-    dormantFront = dormantBack = false;
+    flipping = true; dormantFront = dormantBack = false;
     if (!running){ running = true; last = performance.now(); requestAnimationFrame(tickFrame); }
   }
 
@@ -123,7 +123,7 @@
   onDestroy(() => setAvoid(null));
 </script>
 
-<div class="slot" bind:this={slot}>
+<div class="slot" class:flipping bind:this={slot}>
   <div class="aura" bind:this={aura}></div>
   <div class="floor" bind:this={floor}></div>
   <div class="card" bind:this={card}>
@@ -177,6 +177,11 @@
     background:radial-gradient(ellipse at center,rgba(0,0,0,.7),transparent 70%)}
   /* 3D 容器不得帶 overflow／opacity／filter，否則會被壓平（MDN transform-style） */
   .card{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+  /* 翻卡期間才把每幀要改的遮罩與地面陰影升成獨立圖層，否則每幀連帶重畫整面卡（2026-10-03 同頁 A／B：超過 8 ms 的幀 16 → 1.5 格）；
+     落定就拿掉，免得常駐圖層吃記憶體 */
+  .flipping .floor{will-change:transform,opacity}
+  .flipping :global(.shade),.flipping :global(.sheen){will-change:opacity}
+  .flipping :global(.sheen b){will-change:transform}
 
   /* 題目短時置中；內容超出時 auto 邊距歸零，不會被裁掉頂端 */
   .inner{margin:auto 0}
