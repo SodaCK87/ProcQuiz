@@ -2,6 +2,7 @@
 
 問題台帳裡還開著的缺陷（🔴）與改好但沒探針的（🟡），讀 README 的人看不到台帳，編號一定要出現在 README 的已知限制。
 README〈狀態〉寫的兩個測試條數是手打的，兩輪盤點都抓到落後（30 對 32、25 對 29）；這裡拿實際載入的條數比對（全面盤點 C-01）。
+1 MiB 以上的檔進版控會讓 repo 隨換版線性長大，規範的「進版控」欄要寫得出理由（全面盤點 B-04）。
 """
 import re
 import shutil
@@ -56,6 +57,25 @@ class Readme(unittest.TestCase):
             if status.startswith(("🔴", "🟡")):
                 # 不用 assertIn：失敗訊息會把整份 README 印出來
                 self.assertTrue(pid in readme, f"{pid} 在問題台帳是 {status[:4]}，README 沒提到它")
+
+    def test_large_tracked_files_have_a_reason_in_the_spec(self):
+        # 1 MiB 以上的已追蹤檔，在 docs/檔案結構規範.md〈頂層資料夾〉對應列的「進版控」欄不能只寫「是」
+        spec = (ROOT / "docs" / "檔案結構規範.md").read_text(encoding="utf-8")
+        rows = {}
+        for line in spec.splitlines():
+            m = re.match(r"^\|\s*`([^`]+)`\s*\|(.*)\|\s*$", line)
+            if m and m.group(1).endswith("/"):
+                rows[m.group(1)] = [c.strip() for c in m.group(2).split("|")][-1]
+        self.assertTrue(rows, "規範〈頂層資料夾〉表沒讀到任何列")
+        files = subprocess.run(["git", "-c", "core.quotepath=off", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout.decode("utf-8").split("\0")
+        big = [f for f in files if f and (ROOT / f).stat().st_size >= 1 << 20]
+        self.assertTrue(big, "沒有 1 MiB 以上的追蹤檔：官方 RTF 不在了？")
+        for f in big:
+            with self.subTest(f):
+                hit = [p for p in rows if f.startswith(p)]
+                self.assertTrue(hit, f"{f} 在規範〈頂層資料夾〉找不到對應的資料夾列")
+                cell = rows[max(hit, key=len)]
+                self.assertTrue(cell.startswith("是") and len(cell) > 6, f"{f} 有 {(ROOT / f).stat().st_size >> 20} MiB，規範 {max(hit, key=len)} 的「進版控」欄只寫「{cell}」，要寫理由")
 
     def test_status_counts_match_the_suites(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
