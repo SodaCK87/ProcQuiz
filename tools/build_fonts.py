@@ -6,6 +6,8 @@
 來源是 web/node_modules/@fontsource/noto-serif-tc 的 woff2 切片（package-lock 釘版），先在 web/ 跑過 npm ci。
 每種粗細切成兩個檔：ui（介面、首頁、課程名稱與 ASCII）開站就用得到；bank（只出現在題目與解析的字）
 到了卡片才會被瀏覽器抓。題庫或介面文字改了就要重跑，tests/test_fonts.py 守「每個字都有字形」。
+題庫裡的 CJK 相容表意字（U+F900–FAFF，Big5 來源留下的 契、參、履 等）思源宋體多半沒有字形，字型沒有時瀏覽器會退回系統字型，
+那幾個字會跳字型；題文不能改（CLAUDE.md 第 5 條），所以在 cmap 把相容碼位指到 NFC 對應的標準字字形（全面盤點 A-07）。
 """
 from __future__ import annotations
 
@@ -14,6 +16,7 @@ import io
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 from fontTools.merge import Merger
@@ -86,11 +89,25 @@ def slices(weight: int) -> list[tuple[Path, set[int]]]:
     return rows
 
 
+def compat_aliases(want: set[int]) -> dict[int, int]:
+    """相容表意字 → NFC 對應的標準字碼位（相同的不算）"""
+    out = {}
+    for c in want:
+        if 0xF900 <= c <= 0xFAFF:
+            t = ord(unicodedata.normalize("NFC", chr(c)))
+            if t != c:
+                out[c] = t
+    return out
+
+
 def subset_font(weight: int, want: set[int]) -> tuple[bytes, set[int]]:
-    """把涵蓋 want 的每個切片各自子集化，再合併成一個 woff2；回傳位元組與實際有字形的碼位"""
+    """把涵蓋 want 的每個切片各自子集化，再合併成一個 woff2；回傳位元組與實際有字形的碼位。
+    相容表意字來源沒有字形時，借 NFC 對應字的字形：標準字一併子集進來，合併後在 cmap 多指一個碼位"""
+    alias = compat_aliases(want)
+    request = want | set(alias.values())
     parts, covered = [], set()
     for path, rng in slices(weight):
-        need = want & rng
+        need = request & rng
         if not need:
             continue
         font = TTFont(path, recalcTimestamp=False)
@@ -114,6 +131,15 @@ def subset_font(weight: int, want: set[int]) -> tuple[bytes, set[int]]:
     if not parts:
         raise SystemExit(f"{weight}：沒有任何切片涵蓋要的字")
     merged = Merger().merge(parts) if len(parts) > 1 else TTFont(parts[0])
+    best = merged.getBestCmap() or {}
+    for c, t in alias.items():
+        if c not in best and t in best:
+            for table in merged["cmap"].tables:
+                if table.isUnicode():
+                    table.cmap[c] = best[t]
+            covered.add(c)
+    # unicode-range 只列原本要的字：為了借字形而多子集進來的標準字不列，免得 bank 檔的範圍含介面用字、首頁多抓一個大檔
+    covered &= want
     merged.flavor = "woff2"
     # 時間戳一律用來源切片的，存檔時也不重算，輸出才會逐位元組可重現
     merged.recalcTimestamp = False

@@ -120,7 +120,7 @@
   {:else if view === 'quiz' && question}
     <nav class="bar">
       <button class="back" onclick={() => view = 'start'}>‹ 選題</button>
-      <button class="marks" aria-pressed={marks} onclick={() => { marks = !marks; saveOn(marks); }}>✦ 重點字{marks ? '' : '：關'}</button>
+      <button class="marks" aria-pressed={marks} onclick={() => { marks = !marks; saveOn(marks); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C13 9 15 11 24 12 15 13 13 15 12 24 11 15 9 13 0 12 9 11 11 9 12 0Z" fill="currentColor"/></svg>重點字{marks ? '' : '：關'}</button>
       {#if rangeStats}<span>{mode === 'wrong' ? `錯題剩 ${rangeStats.wrong} 題${deck.mixed ? '・穿插複習' : ''}` : '全部'}・熟練 {rangeStats.mastered}／{rangeStats.total}</span>{/if}
     </nav>
     {#key deck.key}
@@ -152,6 +152,8 @@
   .marks{margin-right:auto;margin-left:12px;padding:2px 10px;border-radius:999px;cursor:pointer;font-size:13px;
     color:var(--page-ink-2);background:rgba(20,14,8,.6);border:1px solid rgba(143,108,42,.55)}
   .marks[aria-pressed="true"]{color:var(--gold-hi);border-color:var(--gold-hi)}
+  /* 星芒畫成 SVG：U+2726 思源宋體沒有，當文字會退回系統字型；這個註解也不能寫那個字，build_fonts.py 連註解一起掃（A-07） */
+  .marks svg{width:.8em;height:.8em;vertical-align:-.1em;margin-right:.2em}
   .done{text-align:center;padding:40px 12px}
   .done h2{color:var(--gold-hi);letter-spacing:.15em}
   .go{display:flex;gap:10px;margin-top:20px}
