@@ -43,8 +43,9 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 1. `python tools/fetch_official.py`：從政府電子採購網「採購法規題庫」下載全部題庫的 DOC 與 PDF，兩份都成功才覆蓋 `data/source/official.*`。
 2. `python tools/convert.py`：核對後寫出 `data/questions/*.json`，並列出與上一版相比新增、刪除、改答案的題目。任何一項核對不過就中止且不寫檔。
 3. 第三方解析出新版時，覆蓋 `data/source/true-false.xlsx`、`multiple-choice.xlsx` 再跑第 2 步。
-4. 跑一次測試、看過 `git diff data/questions/` 後 commit。
-5. 第 2 步若因審查註記中止（題目或解析與審查當時不同），把該題照〈人工審查〉的流程重審，改 `data/review/notes.json` 後重跑。
+4. `python tools/build_fonts.py`：依新題庫重切網站用的思源宋體子集（要先在 `web/` 跑過 `npm ci`）。介面文字改了也要重跑；`tests/test_fonts.py` 會抓到缺字。
+5. 跑一次測試、看過 `git diff data/questions/` 後 commit。
+6. 第 2 步若因審查註記中止（題目或解析與審查當時不同），把該題照〈人工審查〉的流程重審，改 `data/review/notes.json` 後重跑。
 
 ## 正確度怎麼守
 

@@ -50,14 +50,13 @@
     import('./lib/highlight-fixes.json').then(m => { fixes = m.default; }, () => {});
   }
 
-  // 思源宋體等題庫到了才開始下載：慢網路下字型切片（首頁就要 16 塊、約 700 KB）會跟題庫搶頻寬；
-  // 在那之前先用系統內建的明體
+  // 思源宋體等題庫到了才開始下載，在那之前先用系統內建的明體。字型是 tools/build_fonts.py 切的子集：
+  // 首頁只用到介面那兩檔（400＋700 約 260 KB），題目專用字的兩檔到卡片出現才會被抓
   let fontsRequested = false;
   function loadFonts(){
     if (fontsRequested) return;
     fontsRequested = true;
-    import('@fontsource/noto-serif-tc/400.css');
-    import('@fontsource/noto-serif-tc/700.css');
+    import('./fonts.css');
   }
 
   // 存檔延到閒置時：作答當下要先讓翻卡第一格出來，整份紀錄 stringify 加寫入不擋在點擊裡；離開頁面前一定寫完

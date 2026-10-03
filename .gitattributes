@@ -2,3 +2,6 @@
 data/source/** binary
 # 轉檔產出固定 LF，與 convert.py 寫出的內容逐字相同
 data/questions/*.json text eol=lf
+# 網站子集字型：tools/build_fonts.py 產出，woff2 原樣保存、CSS 固定 LF，--check 才比得出逐位元組相同
+web/src/assets/fonts/** binary
+web/src/fonts.css text eol=lf
