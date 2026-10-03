@@ -10,6 +10,7 @@ import unicodedata
 from pathlib import Path
 
 import openpyxl
+from openpyxl.utils import get_column_letter
 
 KINDS = {
     "true-false": {"label": "是非題", "prefix": "tf"},
@@ -17,6 +18,10 @@ KINDS = {
 }
 
 OPTION_MARK = re.compile(r"[(（]([1-4１-４])[)）]")
+
+# 題目列照固定欄位位置讀（read_xlsx），欄一少或對調不會報錯、只會把法源當解析掛上去，
+# 所以先核對第 1 列標題；只核程式真的會讀的那幾欄（練習欄不讀）。
+HEADERS = {0: "編號", 2: "答案", 3: "試題(點擊可回目錄)", 4: "依據法源", 5: "解析"}
 
 # 已查過、確認是 xlsx 本身的不一致（見 docs/問題台帳.md），只在數字完全相同時放行。
 # 換版後數字變了就照樣中止，逼人重新查一次。
@@ -34,6 +39,20 @@ def text_of(v) -> str | None:
         return None
     s = str(v).strip()
     return s or None
+
+
+def norm_header(v) -> str:
+    # 全半形與空白不計，但不做包含比對：「解析」與「解析（補充）」要算不同
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(v or "")))
+
+
+def check_headers(ws, kind: str, path: Path) -> None:
+    header = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
+    for idx, want in HEADERS.items():
+        got = header[idx] if idx < len(header) else None
+        if norm_header(got) != norm_header(want):
+            raise BankError(f"xlsx {KINDS[kind]['label']} {path.name} 工作表「{ws.title}」第 1 列 {get_column_letter(idx + 1)} 欄："
+                            f"標題應為「{want}」，實際「{got if got is not None else ''}」")
 
 
 def read_toc(ws, kind: str) -> tuple[str, dict[int, dict]]:
@@ -104,6 +123,7 @@ def read_xlsx(kind: str, path: Path) -> tuple[dict, list[str]]:
         course = int(m.group(1))
         if course not in toc or toc[course]["name"] != m.group(2).strip():
             raise BankError(f"{kind}：工作表「{ws.title}」與目錄頁課程名稱對不上")
+        check_headers(ws, kind, path)
 
         seen: set[int] = set()
         for row in ws.iter_rows(min_row=3):

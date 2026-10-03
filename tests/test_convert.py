@@ -371,6 +371,28 @@ class Corruption(unittest.TestCase):
         with self.assertRaisesRegex(BankError, "選項標記"):
             convert.build(self.tmp)
 
+    def test_xlsx_deleted_explanation_column(self):
+        # A-01：整欄刪掉解析，後面沒有欄補上來，F 欄變空；不核標題的話會靜默掛上 0 則解析
+        def delete(wb):
+            for ws in wb.worksheets[1:]:
+                ws.delete_cols(6)
+        self._edit_xlsx("true-false", delete)
+        # 只認標題核對的訊息：審查註記也會因解析變了而擲「解析」字樣，那是碰巧擋下，不算
+        with self.assertRaisesRegex(BankError, "F 欄.*標題應為「解析」"):
+            convert.build(self.tmp)
+
+    def test_xlsx_swapped_law_and_explanation_columns(self):
+        # 法源與解析整欄對調（標題連同內容），不核標題的話法源會被當成解析掛上去
+        def swap(wb):
+            for ws in wb.worksheets[1:]:
+                for row in ws.iter_rows(min_row=1, min_col=5, max_col=6):
+                    if any(isinstance(c, openpyxl.cell.cell.MergedCell) for c in row):
+                        continue  # 課程說明列跨欄合併，寫不進去也不必換
+                    row[0].value, row[1].value = row[1].value, row[0].value
+        self._edit_xlsx("true-false", swap)
+        with self.assertRaisesRegex(BankError, "E 欄.*依據法源.*解析"):
+            convert.build(self.tmp)
+
 
 if __name__ == "__main__":
     unittest.main()
