@@ -750,6 +750,6 @@ scratchpad 腳本複製 `subset_font` 流程逐段計時，3 次中位：
 | 落定那幀 | 36.4 | 36.4 | 33.3 | 36.4 |
 | 最長一幀（點擊幀） | 42.4 | 42.5 | 42.4 | 48.5 |
 
-是非題各 12 次、選擇題各 6 次，插樁版同規格比；一般幀比第一次量的 18.2 ms 低是跨 session 的機器差異，只比同一輪。land 幀剩 Paint 1.5 ms（印章動畫起跑）＋JS 0.9 ms，Layout 已是 0；在 165 Hz 剛好多跨一個 vsync，60 Hz 一格 16.7 ms 估不多佔一格，📌 真手機沒量。落定那幀 30–49 ms 是 `rest()` 切 dormant，reveal 併進來沒有變長，卡片這時已靜止。
+是非題各 12 次、選擇題各 6 次，插樁版同規格比；一般幀比第一次量的 18.2 ms 低是跨 session 的機器差異，只比同一輪。land 幀剩 Paint 1.5 ms（印章動畫起跑）＋JS 0.9 ms，Layout 已是 0；在 165 Hz 剛好多跨一個 vsync，60 Hz 一格 16.7 ms 估不多佔一格，📌 真手機沒量。使用者 2026-10-04 決定接受這 2.4 ms，不為它延後印章動畫。落定那幀 30–49 ms 是 `rest()` 切 dormant，reveal 併進來沒有變長，卡片這時已靜止。
 
 行為（1×，逐 rAF 取樣）：改後正面 `.is-ans` 與「看答案」在 1306 ms 落定那幀才出現（改前 421 ms）；0.6 s 回彈中按「看題目」，正面轉回來前已換好；reduced-motion 作答後 100 ms 已換好。storage、focus、interact、errors 四支探針用改後建置都退出 0；`npm test` 36 條綠。量測腳本在 session 暫存區（`flipprof.mjs`、`behave.mjs`、`analyzev.mjs`），不進 repo。
