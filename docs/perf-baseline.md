@@ -692,3 +692,24 @@ scratchpad 腳本複製 `subset_font` 流程逐段計時，3 次中位：
 
 1. P-01 第二步（破壞型測試不經 openpyxl 直接改 xlsx 的 XML）：一條省約 1.5 s、7 條約 10 s，但 unittest 已在線內一半，改法要自己拆 zip 與 sheet XML，風險高。
 2. P-03（字型子集化共用解析或一次子集化）：解析只佔 1%；一次子集化會改輸出位元組，16 s 在 30 s 線內。
+
+## 第 12 輪：2026-10-04 08:40（P-02 第二步：PDF 抽字平行化）
+
+改了什麼：`tools/official.py` 的 `read_pdf_answers` 把 244 頁切成最多 12 段（`PDF_WORKERS = min(12, cpu_count)`），`ProcessPoolExecutor` 各自開 `PdfReader` 抽自己那段再照頁序接回；`PdfReader` 先在主行程開一次，檔壞掉在這裡就擲例外、不進子行程。第 11 輪說的「只抽每題第一行」走不通：每一頁都有題目，pypdf 的成本在內容流解析（cProfile：`ContentStream` 讀物件約 40%、每頁重建字型 cmap 約 18%），visitor 只是過濾輸出、省不到解析。
+量法：同一支 `python tools/measure_perf.py --runs 5 --warmup 1 --only baseline,convert`，版本 760130e 加未 commit 的改動；本機 pypdf 已是 6.19.0（使用者跑 D-01 時 `pip install -r requirements.txt` 升的），所以這輪的「改前」是本機 6.19.0 的新基準，不是第 10 輪的 6.12.1。⚠️ 量測前後 CPU 負載：改前 21%／21%，改後 8 行程那次 37%／41%、12 行程那次 30%／33%（另一個 session 在跑），數字偏高；安靜機器上的原型（獨立腳本只抽字）8 行程 2.36 s。
+
+| 熱點 | 改前（6.19.0 順序抽） | 改後 8 行程上限 | 改後 12 行程上限 | 判讀 |
+| --- | --- | --- | --- | --- |
+| `convert.py --check` 端到端 | 10.81 s／11.14 s | 6.76 s／6.94 s | 6.16 s／7.12 s | 改後最大值低於改前最小值，走出雜訊帶；省 4.1–4.7 s（38–43%）。目標「中位數 6 s 以下」沒達到，差 0.2 s，背景負載 30% 以上 |
+| `read_pdf_answers` PDF 抽字 | 7.84 s／8.50 s | 2.90 s／3.89 s | 3.32 s／3.59 s | 省 4.5–4.9 s；兩次改後互差在雜訊內（負載不同），分不出 8 與 12 哪個好 |
+| `read_rtf` | 608 ms | 670 ms | 622 ms | 同 |
+| `read_xlsx` 是非／選擇 | 1.16 s／337 ms | 1.12 s／355 ms | 1.16 s／351 ms | 同 |
+| `import convert` | 358 ms | 386 ms | 370 ms | 同；每個子行程還要再 import 一次 convert.py（spawn 會把主模組跑一遍，openpyxl 約 0.35 s），平行所以只算一次 |
+
+行程數獨立掃（scratchpad 腳本只量 `read_pdf_answers`，背景負載約 59%）：1 行程 9.08 s、8 行程 4.79 s、12 行程 3.94 s、16 行程 3.66 s；安靜時（負載約 10%）順序 7.67 s、2 行程 4.77 s、4 行程 3.05 s、6 行程 2.57 s、8 行程 2.36 s。上限取 12：16 核再多只剩啟動成本，CI 4 核照 `cpu_count` 用 4，估 3 s 左右（第 11 輪 CI 的 convert 10.5 s 要等下次 run 看實際）。
+
+正確性：8／12／16 行程結果與順序抽逐字相同（3,599 題）；`OfficialCrossCheck.test_flipped_answer_is_caught`（RTF 改答案被 PDF 抓到）與 `SourceCache` 的截斷 PDF 要擲例外都綠；`test_convert.py` 34 條 31.3 s。
+
+### 剩下的 6 s 在哪、下一步
+
+改後端到端約 6.2 s：PDF 3.3 s（54%）、xlsx 兩份 1.5 s（25%）、RTF 0.6 s（10%）、import 0.4 s、啟動 0.2 s。再省只有一條路：PDF 子行程在跑的時候主行程先解析 RTF 與 xlsx（現在是 RTF→PDF→xlsx 順序），可藏掉約 2.1 s、估到 4 s 左右；代價是 `build()` 要改成「先開 PDF 工作、後取結果」，測試的 `_cached_pdf` 包法與 `measure_perf.py` 的分段埋點都要跟著改（PDF 段會變成「等待時間」），列為 P-02 第三步，要不要做看 CI 實際秒數。

@@ -6,8 +6,10 @@ RTF 是表格結構，題目、答案、法源分欄，當主來源；PDF 只拿
 """
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from xlsx_bank import BankError, KINDS, parse_answer, split_options
@@ -96,13 +98,35 @@ def _row(kind: str, course: str, cells: list[str]) -> dict:
     return q
 
 
-def read_pdf_answers(path: Path, course_names: set[str]) -> dict[tuple[str, str], list[tuple[int, str]]]:
-    """從 PDF 每題第一行「編號 答案 題目…」取出（編號, 答案）。課程名稱用 RTF 讀到的那組辨認。"""
+PDF_WORKERS = min(12, os.cpu_count() or 1)  # 本機 16 核：8→12 行程再省約 0.8 s，再多只剩啟動成本；CI 4 核用 4
+
+
+def pdf_pages_text(path: str, start: int, stop: int) -> list[str]:
+    """抽第 start 到 stop（不含）頁的文字。獨立成模組層函式，子行程才 pickle 得到。"""
     import pypdf
 
-    lines: list[str] = []
-    for page in pypdf.PdfReader(str(path)).pages:
-        lines += (page.extract_text() or "").split("\n")
+    reader = pypdf.PdfReader(path)
+    return [reader.pages[i].extract_text() or "" for i in range(start, stop)]
+
+
+def read_pdf_answers(path: Path, course_names: set[str]) -> dict[tuple[str, str], list[tuple[int, str]]]:
+    """從 PDF 每題第一行「編號 答案 題目…」取出（編號, 答案）。課程名稱用 RTF 讀到的那組辨認。
+    抽字佔轉檔七成（pypdf 純 Python、每頁都有題目所以跳不掉），把頁切成幾段交給子行程平行抽：
+    本機 16 核安靜時 8 行程 7.7 s→2.4 s、有背景負載時 12 行程 7.8 s→3.3 s，CI 4 核約 3 s（效能基準第 12 輪，P-02）。
+    頁的順序照段落接回，8／12／16 行程的結果都與順序抽逐字相同（3,599 題）。"""
+    import pypdf
+
+    n = len(pypdf.PdfReader(str(path)).pages)  # 檔壞掉在這裡就擲例外，不會進到子行程
+    workers = min(PDF_WORKERS, n)
+    if workers > 1:
+        step = -(-n // workers)
+        ranges = [(i, min(i + step, n)) for i in range(0, n, step)]
+        with ProcessPoolExecutor(max_workers=len(ranges)) as pool:
+            parts = list(pool.map(pdf_pages_text, [str(path)] * len(ranges), [a for a, _ in ranges], [b for _, b in ranges]))
+        texts = [t for part in parts for t in part]
+    else:
+        texts = pdf_pages_text(str(path), 0, n)
+    lines: list[str] = [line for text in texts for line in text.split("\n")]
 
     first = re.compile(r"^(\d+) ([OX1-4]) ")
     kind = course = None
