@@ -98,7 +98,9 @@ def _row(kind: str, course: str, cells: list[str]) -> dict:
     return q
 
 
-PDF_WORKERS = min(12, os.cpu_count() or 1)  # 本機 16 核：8→12 行程再省約 0.8 s，再多只剩啟動成本；CI 4 核用 4
+# 抽字跟主行程解析 RTF／xlsx 重疊（convert.build），行程多了反而跟主行程搶 CPU：本機 16 核有背景負載時端到端 4 行程 4.07 s、
+# 6 行程 4.26 s、8 行程 4.40 s、12 行程 4.60 s（第 13 輪），取 6；CI 4 核照 cpu_count。環境變數 PQZ_PDF_WORKERS 可改，量測掃行程數用
+PDF_WORKERS = min(int(os.environ.get("PQZ_PDF_WORKERS", "6")), os.cpu_count() or 1)
 
 
 def pdf_pages_text(path: str, start: int, stop: int) -> list[str]:
@@ -109,23 +111,50 @@ def pdf_pages_text(path: str, start: int, stop: int) -> list[str]:
     return [reader.pages[i].extract_text() or "" for i in range(start, stop)]
 
 
-def read_pdf_answers(path: Path, course_names: set[str]) -> dict[tuple[str, str], list[tuple[int, str]]]:
-    """從 PDF 每題第一行「編號 答案 題目…」取出（編號, 答案）。課程名稱用 RTF 讀到的那組辨認。
-    抽字佔轉檔七成（pypdf 純 Python、每頁都有題目所以跳不掉），把頁切成幾段交給子行程平行抽：
-    本機 16 核安靜時 8 行程 7.7 s→2.4 s、有背景負載時 12 行程 7.8 s→3.3 s，CI 4 核約 3 s（效能基準第 12 輪，P-02）。
-    頁的順序照段落接回，8／12／16 行程的結果都與順序抽逐字相同（3,599 題）。"""
-    import pypdf
+class PdfTextJob:
+    """PDF 抽字工作：建構時就把頁段送進子行程，result() 才接回；主行程這段時間可以先解析 RTF 與 xlsx（convert.build）。
+    抽字佔轉檔七成（pypdf 純 Python、每頁都有題目所以跳不掉）：單獨量本機 16 核安靜時 8 行程 7.7 s→2.4 s（第 12 輪），
+    與 RTF／xlsx 解析重疊後端到端 10.8 s→4.3 s（第 13 輪，P-02）。頁的順序照段落接回，4–16 行程的結果都與順序抽逐字相同。"""
 
-    n = len(pypdf.PdfReader(str(path)).pages)  # 檔壞掉在這裡就擲例外，不會進到子行程
-    workers = min(PDF_WORKERS, n)
-    if workers > 1:
-        step = -(-n // workers)
-        ranges = [(i, min(i + step, n)) for i in range(0, n, step)]
-        with ProcessPoolExecutor(max_workers=len(ranges)) as pool:
-            parts = list(pool.map(pdf_pages_text, [str(path)] * len(ranges), [a for a, _ in ranges], [b for _, b in ranges]))
-        texts = [t for part in parts for t in part]
-    else:
-        texts = pdf_pages_text(str(path), 0, n)
+    def __init__(self, path: Path):
+        import pypdf
+
+        self.path = str(path)
+        self.n = len(pypdf.PdfReader(self.path).pages)  # 檔壞掉在這裡就擲例外，不會進到子行程
+        workers = min(PDF_WORKERS, self.n)
+        self.pool = self.futures = None
+        if workers > 1:
+            step = -(-self.n // workers)
+            ranges = [(i, min(i + step, self.n)) for i in range(0, self.n, step)]
+            self.pool = ProcessPoolExecutor(max_workers=len(ranges))
+            self.futures = [self.pool.submit(pdf_pages_text, self.path, a, b) for a, b in ranges]
+
+    def result(self) -> list[str]:
+        """每頁的文字，照頁序"""
+        if self.pool is None:
+            return pdf_pages_text(self.path, 0, self.n)
+        try:
+            return [t for f in self.futures for t in f.result()]
+        finally:
+            self.pool.shutdown()
+
+    def cancel(self) -> None:
+        # 主行程在等結果前就失敗（RTF 核對不過）時叫：還沒開始的段取消；已在跑的子行程殺不掉，直譯器結束時會等它們
+        if self.pool is not None:
+            self.pool.shutdown(wait=False, cancel_futures=True)
+
+
+def start_pdf_text(path: Path) -> PdfTextJob:
+    return PdfTextJob(path)
+
+
+def read_pdf_answers(path: Path, course_names: set[str]) -> dict[tuple[str, str], list[tuple[int, str]]]:
+    """從 PDF 每題第一行「編號 答案 題目…」取出（編號, 答案）。課程名稱用 RTF 讀到的那組辨認。"""
+    return parse_pdf_answers(start_pdf_text(path).result(), course_names)
+
+
+def parse_pdf_answers(texts: list[str], course_names: set[str]) -> dict[tuple[str, str], list[tuple[int, str]]]:
+    """把每頁文字解析成 {(題型, 課程): [(編號, 答案)]}"""
     lines: list[str] = [line for text in texts for line in text.split("\n")]
 
     first = re.compile(r"^(\d+) ([OX1-4]) ")

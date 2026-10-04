@@ -713,3 +713,25 @@ scratchpad 腳本複製 `subset_font` 流程逐段計時，3 次中位：
 ### 剩下的 6 s 在哪、下一步
 
 改後端到端約 6.2 s：PDF 3.3 s（54%）、xlsx 兩份 1.5 s（25%）、RTF 0.6 s（10%）、import 0.4 s、啟動 0.2 s。再省只有一條路：PDF 子行程在跑的時候主行程先解析 RTF 與 xlsx（現在是 RTF→PDF→xlsx 順序），可藏掉約 2.1 s、估到 4 s 左右；代價是 `build()` 要改成「先開 PDF 工作、後取結果」，測試的 `_cached_pdf` 包法與 `measure_perf.py` 的分段埋點都要跟著改（PDF 段會變成「等待時間」），列為 P-02 第三步，要不要做看 CI 實際秒數。
+
+## 第 13 輪：2026-10-04 09:30（P-02 第三步：PDF 抽字與 RTF／xlsx 解析重疊）
+
+改了什麼：`convert.build()` 改成先 `start_pdf_answers()` 把抽字送進子行程，主行程接著解析 RTF 與兩份 xlsx，最後 `pdf(names)` 取結果做 `cross_check`（錯誤順序因此變成 xlsx 的核對先於 RTF／PDF 比對，結論不變）；`official.py` 拆成 `PdfTextJob`／`start_pdf_text`／`parse_pdf_answers`，`read_pdf_answers` 照舊可用。`xlsx_bank.py` 的 openpyxl 改成用到才 import：spawn 的子行程會把主模組 `convert.py` 重跑一遍，0.33 s 的 import 乘上行程數全是白做、還跟主行程搶 CPU。`measure_perf.py` 的 PDF 段改成兩段：「送出 PDF 工作」與「等 PDF」，抽字本身不在主行程、不算進端到端。`tests/test_convert.py` 的快取改掛在 `convert.start_pdf_answers`。
+量法：同一支 `python tools/measure_perf.py --runs 5 --warmup 1 --only baseline,convert`，版本 8012552 加未 commit 的改動。⚠️ 背景負載仍在：量測前 41%／量後 21%（另一個 session 的 `claude` 行程）。
+
+| 熱點 | 第 12 輪改前（順序抽） | 第 12 輪（12 行程平行抽） | 第 13 輪（重疊，6 行程） | 判讀 |
+| --- | --- | --- | --- | --- |
+| `convert.py --check` 端到端 | 10.81 s／11.14 s | 6.16 s／7.12 s | 4.56 s／4.92 s | 兩步合計省 6.3 s（58%）；第 13 輪最大值低於第 12 輪最小值，走出雜訊帶。目標「4.5 s 以下」差 0.06 s，負載 41% 時量的 |
+| 等 PDF（主行程解析完後還等多久） | — | — | 80 ms／93 ms | 抽字幾乎全藏在 RTF＋xlsx 解析底下 |
+| 送出 PDF 工作（開 PdfReader 數頁數、起子行程） | — | — | 230 ms／262 ms | 主行程付的固定成本 |
+| `read_rtf` | 608 ms | 622 ms | 937 ms／1.17 s | 慢 0.3 s：子行程同時在抽字，跟主行程搶 CPU |
+| `read_xlsx` 是非／選擇 | 1.16 s／337 ms | 1.16 s／351 ms | 2.00 s／352 ms | 是非那份多了 openpyxl 的 import（0.33 s，從「import convert」搬過來）加搶 CPU |
+| `import convert` | 358 ms | 370 ms | 51 ms | openpyxl 延後 import，每個子行程也不再付這 0.33 s |
+
+行程數掃（`PQZ_PDF_WORKERS`，`convert.py --check` 各 4 次去頭取中位，背景負載約 50%）：4 行程 4.07 s、6 行程 4.26 s、8 行程 4.40 s、12 行程 4.60 s——重疊之後行程越多越慢，因為 PDF 只要抽得比 RTF＋xlsx 的 2.4 s 快就夠了，多出來的行程只會跟主行程搶 CPU。預設取 6（4 與 6 差 0.2 s 在雜訊內，安靜機器上 6 行程的抽字 2.6 s 比 4 行程 3.1 s 更接近藏得住的線）；CI 4 核照 `cpu_count` 用 4。
+
+正確性：`test_convert.py` 34 條綠；建置層陽性對照（複本 RTF 改一題答案、真走子行程）`build()` 擲 BankError「RTF (1, 'O')，PDF (1, 'X')」4.5 s，原檔 `build()` 4.2 s。
+
+### 剩下的 4.5 s 在哪
+
+主行程串列：直譯器與 import 0.3 s → 送出 PDF 0.23 s → RTF 0.94 s → xlsx 2.35 s → 等 PDF 0.08 s → 組裝與比對 0.2 s；xlsx 解析（openpyxl 純 Python）佔一半。再省只剩把兩份 xlsx 也丟到子行程（結果要 pickle 3,599 列，估省 1 s 以內）或換 xlsx 解析器（新相依，要先問）。P-02 到此結案：CI 的 Python 測試步 31.4 s→28.0 s（第 12 輪）之後再看這輪的 run。

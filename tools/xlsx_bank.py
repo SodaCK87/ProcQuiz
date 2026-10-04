@@ -9,8 +9,8 @@ import re
 import unicodedata
 from pathlib import Path
 
-import openpyxl
-from openpyxl.utils import get_column_letter
+# openpyxl 不在模組層 import：PDF 抽字的子行程（spawn）會把主模組 convert.py 連同這裡重跑一遍，0.33 s 的 import 乘上行程數
+# 全是白做、還跟主行程搶 CPU；用到時才 import（效能基準第 13 輪）
 
 KINDS = {
     "true-false": {"label": "是非題", "prefix": "tf"},
@@ -47,6 +47,8 @@ def norm_header(v) -> str:
 
 
 def check_headers(ws, kind: str, path: Path) -> None:
+    from openpyxl.utils import get_column_letter
+
     header = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
     for idx, want in HEADERS.items():
         got = header[idx] if idx < len(header) else None
@@ -110,6 +112,8 @@ def parse_answer(raw, kind: str, where: str):
 
 def read_xlsx(kind: str, path: Path) -> tuple[dict, list[str]]:
     """回傳（{version, courses, questions}, 提醒清單）。questions 的 text 是題目原文（選擇題含選項）。"""
+    import openpyxl
+
     wb = openpyxl.load_workbook(path)
     version, toc = read_toc(wb.worksheets[0], kind)
     label = KINDS[kind]["label"]

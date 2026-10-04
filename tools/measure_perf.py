@@ -66,16 +66,38 @@ def child_convert() -> dict:
         setattr(convert, name, w)
 
     # build() 用的是 convert 模組內的名字，換掉這些名字就是埋點，產品碼一個字不動
-    for name in ("read_rtf", "read_pdf_answers", "cross_check", "apply_review", "check_duplicates"):
+    for name in ("read_rtf", "cross_check", "apply_review", "check_duplicates"):
         wrap(name)
     wrap("read_xlsx", lambda kind, path: f"read_xlsx:{kind}")
+
+    # PDF 抽字在子行程跟 RTF／xlsx 解析重疊（第 13 輪起）：量「送出」（開 PdfReader 數頁數、起子行程）與「等」（主行程解析完後還要等多久），
+    # 抽字本身的時間不在主行程、不算進端到端
+    orig_start = convert.start_pdf_answers
+
+    def start_timed(path):
+        t0 = perf_counter()
+        finish = orig_start(path)
+        timed["pdf_start"] = timed.get("pdf_start", 0.0) + perf_counter() - t0
+        hits["pdf_start"] = hits.get("pdf_start", 0) + 1
+
+        def finish_timed(course_names):
+            t1 = perf_counter()
+            try:
+                return finish(course_names)
+            finally:
+                timed["pdf_wait"] = timed.get("pdf_wait", 0.0) + perf_counter() - t1
+                hits["pdf_wait"] = hits.get("pdf_wait", 0) + 1
+        finish_timed.cancel = finish.cancel
+        return finish_timed
+    convert.start_pdf_answers = start_timed
 
     t = perf_counter()
     result, _ = convert.build()
     build_t = perf_counter() - t
     labels = {
         "read_rtf": "read_rtf：RTF 解析",
-        "read_pdf_answers": "read_pdf_answers：PDF 抽字",
+        "pdf_start": "start_pdf_answers：送出 PDF 工作（數頁數、起子行程）",
+        "pdf_wait": "等 PDF：RTF 與 xlsx 解析完後還等子行程多久（抽字與解析重疊，不算進端到端）",
         "cross_check": "cross_check：RTF 與 PDF 逐題比對",
         "read_xlsx:true-false": "read_xlsx：是非題解析 xlsx",
         "read_xlsx:multiple-choice": "read_xlsx：選擇題解析 xlsx",

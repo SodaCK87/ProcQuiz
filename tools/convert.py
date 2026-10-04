@@ -14,7 +14,7 @@ import json
 import sys
 from pathlib import Path
 
-from official import cross_check, norm, read_pdf_answers, read_rtf
+from official import cross_check, norm, parse_pdf_answers, read_rtf, start_pdf_text
 from xlsx_bank import BankError, KINDS, read_xlsx
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,22 +71,39 @@ def require_review(review: Path) -> None:
                         "這個檔進版控，請確認路徑或用 git 還原")
 
 
+def start_pdf_answers(path: Path):
+    """先把 PDF 抽字送進子行程，回傳「給課程名、拿 {(題型, 課程): [(編號, 答案)]}」的函式；主行程這段時間解析 RTF 與 xlsx，
+    端到端少掉重疊的那段（效能基準第 13 輪，P-02 第三步）。測試把這個名字換成走快取的版本，不會每次都起子行程。"""
+    job = start_pdf_text(path)
+
+    def finish(course_names: set[str]):
+        return parse_pdf_answers(job.result(), course_names)
+    finish.cancel = job.cancel
+    return finish
+
+
 def build(source: Path = SOURCE, review: Path = REVIEW) -> tuple[dict[str, dict], list[str]]:
     """回傳（{kind: 題庫資料}, 提醒清單）。任何核對失敗擲 BankError。"""
     require_review(review)  # 先擋，不必等讀完三份大檔才發現
-    date, sections = read_rtf(source / "official.rtf")
-    names = {course for _, course in sections}
-    if names != set(COURSES):
-        raise BankError(f"官方課程名稱與預期不同：多了 {sorted(names - set(COURSES))}，少了 {sorted(set(COURSES) - names)}")
-    if set(sections) != {(k, c) for k in KINDS for c in COURSES}:
-        raise BankError("官方 RTF 不是每個課程都有是非題與選擇題兩段")
-    cross_check(sections, read_pdf_answers(source / "official.pdf", names))
+    pdf = start_pdf_answers(source / "official.pdf")  # 子行程抽字的同時，主行程解析 RTF 與兩份 xlsx
+    try:
+        date, sections = read_rtf(source / "official.rtf")
+        names = {course for _, course in sections}
+        if names != set(COURSES):
+            raise BankError(f"官方課程名稱與預期不同：多了 {sorted(names - set(COURSES))}，少了 {sorted(set(COURSES) - names)}")
+        if set(sections) != {(k, c) for k in KINDS for c in COURSES}:
+            raise BankError("官方 RTF 不是每個課程都有是非題與選擇題兩段")
+        xlsx = {kind: read_xlsx(kind, source / f"{kind}.xlsx") for kind in KINDS}
+        cross_check(sections, pdf(names))
+    except BaseException:
+        pdf.cancel()
+        raise
 
     notes: list[str] = []
     applied: set[str] = set()
     result = {}
     for kind, meta in KINDS.items():
-        xdata, xnotes = read_xlsx(kind, source / f"{kind}.xlsx")
+        xdata, xnotes = xlsx[kind]
         notes += xnotes
         if list(xdata["courses"].values()) != COURSES:
             raise BankError(f"xlsx {kind} 的課程名稱或順序與官方不同")

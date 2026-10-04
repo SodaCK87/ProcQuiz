@@ -53,7 +53,15 @@ def _cached_xlsx(kind, path):
     return copy.deepcopy(_xlsx_cache[key])
 
 
-official.read_pdf_answers = convert.read_pdf_answers = _cached_pdf
+def _cached_start_pdf(path):
+    # build() 改成先送出 PDF 工作再解析 RTF／xlsx（P-02 第三步）：測試裡仍走內容雜湊快取，不每次起子行程
+    finish = lambda course_names: _cached_pdf(path, course_names)
+    finish.cancel = lambda: None
+    return finish
+
+
+official.read_pdf_answers = _cached_pdf
+convert.start_pdf_answers = _cached_start_pdf
 official.read_rtf = convert.read_rtf = _cached_rtf
 xlsx_bank.read_xlsx = convert.read_xlsx = _cached_xlsx
 
