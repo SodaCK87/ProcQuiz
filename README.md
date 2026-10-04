@@ -7,7 +7,7 @@
 
 ## 狀態
 
-M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ 。手機實機確認過翻卡不頓（2026-10-02）、星空不再重排（2026-10-03）；還沒在實機確認長解析能不能捲到底、連續練會不會發熱、系統字級放大、LINE 內建瀏覽器轉址（清單在 [目標路線圖.md](目標路線圖.md)〈現在卡在哪〉）。進度見路線圖。
+M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ 。手機實機確認過翻卡不頓、星空不再重排、長解析捲得到底、系統字級放大、LINE 內建瀏覽器轉址、相容字顯示（2026-10-02 至 10-04，清單在 [目標路線圖.md](目標路線圖.md)〈現在卡在哪〉）；還沒給同事試用。進度見路線圖。
 測試：`python -m unittest discover -s tests` 47 條全綠（2026-10-04，本機 Python 3.11.9，約 40 秒；相依先裝 `pip install -r requirements.txt`）；
 網站邏輯 `npm test`（在 `web/`）36 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 支援範圍：維護用 Node 24、Python 3.11（與 CI 同版，`web/package.json` 的 `engines` 擋舊版 Node）；網站建置目標 Chrome／Edge 111、Firefox 114、Safari／iOS 16.4 以上（`web/vite.config.js` 的 `build.target`，更舊的瀏覽器開站可能空白），`tests/test_readme.py` 比對這段與設定檔一致。
