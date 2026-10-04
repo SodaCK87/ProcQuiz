@@ -735,3 +735,21 @@ scratchpad 腳本複製 `subset_font` 流程逐段計時，3 次中位：
 ### 剩下的 4.5 s 在哪
 
 主行程串列：直譯器與 import 0.3 s → 送出 PDF 0.23 s → RTF 0.94 s → xlsx 2.35 s → 等 PDF 0.08 s → 組裝與比對 0.2 s；xlsx 解析（openpyxl 純 Python）佔一半。再省只剩把兩份 xlsx 也丟到子行程（結果要 pickle 3,599 列，估省 1 s 以內）或換 xlsx 解析器（新相依，要先問）。P-02 到此結案：CI 的 Python 測試步 31.4 s→28.0 s（第 12 輪）之後再看這輪的 run。
+
+## 第 14 輪：2026-10-04（翻卡主緒小修：對錯配色延到落定、存檔避開回彈）
+
+先量（零改動）：無頭 Chrome 375×812 DPR 2、165 Hz，localStorage 預灌 3,599 題都答過（最壞情況），CPU 1×／4×／6× 各 6 次以上，LoAF 加 devtools.timeline 依幀歸類。作答翻卡 1.4 s 內的尖峰有三個：點擊幀（4× 48.5 ms，全文件 Layout 17.2 ms，約一半來自 `flipTo` 解除背面 dormant）、land 幀（24.2 ms，`revealed=true` 讓正面按鈕列與對錯配色重算樣式、版面、繪製 7.8 ms）、存檔幀（24.1 ms，`requestIdleCallback` 的 1 s 上限在翻卡中硬觸發，stringify＋setItem 7.6 ms，6× 13.4 ms）。量了可忽略：onresult、flipTo、step、render、burst、`getBoundingClientRect`（各 ≤1.4 ms）。
+
+改了什麼：`QuizCard.svelte` 的 `revealed` 改在彈簧落定（`tickFrame` 轉 idle）才設，回彈中按「看題目」與 reduced-motion 路徑當下就設；`App.svelte` 存檔上限 1000 → 2000 ms（彈簧模擬 1.35 s 落定）。不動的：點擊幀的 dormant 解除（拿掉會退回 P-02 的「90° 頓一下」風險）、星空每幀讀 `innerWidth`（拿掉只是把樣式重算挪位置，幀長不變）。
+
+| 項目（4×，中位數 ms） | 是非 改前 | 是非 改後 | 選擇 改前 | 選擇 改後 |
+| --- | --- | --- | --- | --- |
+| 一般幀 | 12.2 | 12.2 | 12.2 | 12.2 |
+| land 幀 | 24.2 | 18.2 | 21.2 | 18.2 |
+| 存檔幀 | 24.2 | 6.0（落定後 1.40 s 才存） | 24.2 | 6.1 |
+| 落定那幀 | 36.4 | 36.4 | 33.3 | 36.4 |
+| 最長一幀（點擊幀） | 42.4 | 42.5 | 42.4 | 48.5 |
+
+是非題各 12 次、選擇題各 6 次，插樁版同規格比；一般幀比第一次量的 18.2 ms 低是跨 session 的機器差異，只比同一輪。land 幀剩 Paint 1.5 ms（印章動畫起跑）＋JS 0.9 ms，Layout 已是 0；在 165 Hz 剛好多跨一個 vsync，60 Hz 一格 16.7 ms 估不多佔一格，📌 真手機沒量。落定那幀 30–49 ms 是 `rest()` 切 dormant，reveal 併進來沒有變長，卡片這時已靜止。
+
+行為（1×，逐 rAF 取樣）：改後正面 `.is-ans` 與「看答案」在 1306 ms 落定那幀才出現（改前 421 ms）；0.6 s 回彈中按「看題目」，正面轉回來前已換好；reduced-motion 作答後 100 ms 已換好。storage、focus、interact、errors 四支探針用改後建置都退出 0；`npm test` 36 條綠。量測腳本在 session 暫存區（`flipprof.mjs`、`behave.mjs`、`analyzev.mjs`），不進 repo。

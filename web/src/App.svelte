@@ -63,11 +63,12 @@
     import('./fonts.css').catch(() => {});  // 字型抓不到就留系統明體，不是錯，不要觸發全域錯誤提示
   }
 
-  // 存檔延到閒置時：作答當下要先讓翻卡第一格出來，整份紀錄 stringify 加寫入不擋在點擊裡；離開頁面前一定寫完
+  // 存檔延到閒置時：作答當下要先讓翻卡第一格出來，整份紀錄 stringify 加寫入不擋在點擊裡；離開頁面前一定寫完。
+  // 慢手機翻卡中沒有閒置，上限一到就硬存：上限要長過彈簧落定（約 1.35 s），否則那 8–13 ms 打在回彈尾段（4×／6× 節流實測）
   let saveQueued = false;
   const idle = globalThis.requestIdleCallback ?? (f => setTimeout(f, 200));
   function flush(){ if (saveQueued){ saveQueued = false; saveError = saveWithNotice(progress); } }
-  function persist(){ rev++; if (!saveQueued){ saveQueued = true; idle(flush, { timeout: 1000 }); } }
+  function persist(){ rev++; if (!saveQueued){ saveQueued = true; idle(flush, { timeout: 2000 }); } }
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 

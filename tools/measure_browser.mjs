@@ -98,6 +98,8 @@ function finish(out, code = 0){ console.log(JSON.stringify(out, null, 1)); ws.cl
 /* ---------- 頁內工具 ---------- */
 const HELPERS = `
 window.__find = t => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === t);
+// 正面第一個選項（是非題的 O、選擇題的 1）。選擇題鈕的字是「1＋選項全文」，__find('1') 永遠找不到
+window.__ans = () => document.querySelector('.face.front .tf .btn, .face.front .mc .btn');
 window.__fr = async ms => { const iv = []; let last = performance.now(); const end = last + ms;
   await new Promise(res => { function f(t){ iv.push(t - last); last = t; if (t < end) requestAnimationFrame(f); else res(); } requestAnimationFrame(f); setTimeout(res, ms + 3000); });
   iv.shift(); return iv; };
@@ -106,7 +108,7 @@ window.__cap = async ms => { let n = 0; const t0 = performance.now(), end = t0 +
   return 100 * (1 - n / (performance.now() - t0)); };
 window.__style = css => { let s = document.getElementById('__ab'); if (!s){ s = document.createElement('style'); s.id = '__ab'; document.head.appendChild(s); } s.textContent = css; };`;
 const FLIP = `(async () => { if (__find('下一題')){ __find('下一題').click(); await new Promise(r => setTimeout(r, 1400)); }
-  const a = __find('O') || __find('1'); const p = __fr(1400); a.click(); const iv = await p; await new Promise(r => setTimeout(r, 500)); return iv; })()`;
+  const a = __ans(); const p = __fr(1400); a.click(); const iv = await p; await new Promise(r => setTimeout(r, 500)); return iv; })()`;
 const SEED = `{ let x = 12345; Math.random = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648); }`;
 
 await send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 2, mobile: true });
@@ -242,7 +244,7 @@ if (mode === 'next'){
   const fps = (await ev('__fr(2000)')).length / 2, budget = 1.5 * 1000 / fps;
   await send('Emulation.setCPUThrottlingRate', { rate: CPU });
   await startQuiz();
-  const NEXT = `(async () => { if (!__find('下一題')){ (__find('O') || __find('1')).click(); await new Promise(r => setTimeout(r, 1400)); }
+  const NEXT = `(async () => { if (!__find('下一題')){ __ans().click(); await new Promise(r => setTimeout(r, 1400)); }
     const p = __fr(1500); __find('下一題').click(); const iv = await p; await new Promise(r => setTimeout(r, 300)); return iv; })()`;
   await ev(NEXT);
   const names = Object.keys(VARIANTS), out = Object.fromEntries(names.map(k => [k, []]));
@@ -381,17 +383,17 @@ if (mode === 'errors'){
 }
 
 if (mode === 'storage'){
-  // 紀錄存不進去的提示（A-04）：App.svelte 的 flush 把 saveWithNotice 的回傳接到 [role=alert]。存檔延到閒置（最多 1 秒）才做，作答後等 1.8 秒再讀
+  // 紀錄存不進去的提示（A-04）：App.svelte 的 flush 把 saveWithNotice 的回傳接到 [role=alert]。存檔延到閒置（最多 2 秒）才做，作答後等 2.6 秒再讀
   const read = `[...document.querySelectorAll('[role=alert]')].map(e => e.textContent.trim())`;
-  const answer = `(() => { const b = __find('O') || __find('1'); if (!b) return false; b.click(); return true; })()`;
+  const answer = `(() => { const b = __ans(); if (!b) return false; b.click(); return true; })()`;
   const out = {};
   await open(urls[0], 2500); await startQuiz();
-  out.正常作答 = await ev(answer); await sleep(1800);
+  out.正常作答 = await ev(answer); await sleep(2600);
   out.正常作答後 = await ev(read);
   await open(`${urls[0]}?r=1`, 2500);
   await ev(`Object.defineProperty(Storage.prototype, 'setItem', { value(){ throw new DOMException('探針：儲存空間滿', 'QuotaExceededError'); } }); 1`);
   await startQuiz();
-  out.失敗作答 = await ev(answer); await sleep(1800);
+  out.失敗作答 = await ev(answer); await sleep(2600);
   out.存檔失敗後 = await ev(read);
   const ok = out.正常作答 && out.失敗作答 && out.正常作答後.length === 0 && out.存檔失敗後.some(t => /紀錄/.test(t)) && !out.存檔失敗後.some(t => /網頁出了錯/.test(t));
   finish({ 通過: !!ok, ...out }, ok ? 0 : 1);
@@ -413,7 +415,7 @@ if (mode === 'focus'){
   out.選題頁 = await walk(8);
   await startQuiz();
   out.卡面正面 = await walk(8);
-  await ev(`(__find('O') || __find('1')).click()`); await sleep(1800);
+  await ev(`__ans().click()`); await sleep(1800);
   out.翻到背面 = await walk(8);
   const all = [...out.選題頁, ...out.卡面正面, ...out.翻到背面], bad = all.filter(f => f.hidden), segs = out.選題頁.filter(f => f.ring);
   const ringOk = segs.length >= 2 && segs.every(f => f.ring.style !== 'none' && f.ring.inside);
@@ -440,7 +442,7 @@ if (mode === 'interact'){
   out.微調晚於題庫 = await ev(`(() => { const es = performance.getEntriesByType('resource'); const bank = es.find(e => /true-false-/.test(e.name)), fix = es.find(e => /highlight-fixes-/.test(e.name));
     return bank && fix ? +(fix.startTime - bank.responseEnd).toFixed(0) : null; })()`);
   // pagehide：作答與派事件在同一個 task 裡，閒置回呼沒機會先存；拿到的紀錄就是 pagehide 寫的
-  out.pagehide後紀錄 = await ev(`(() => { localStorage.removeItem('pqz:progress:v1'); (__find('O') || __find('1')).click(); dispatchEvent(new Event('pagehide'));
+  out.pagehide後紀錄 = await ev(`(() => { localStorage.removeItem('pqz:progress:v1'); __ans().click(); dispatchEvent(new Event('pagehide'));
     const p = JSON.parse(localStorage.getItem('pqz:progress:v1') || 'null'); return p ? Object.keys(p.answers).length : null; })()`);
   // LINE 內建瀏覽器：UA 含 Line/ 時 main.js 要改網址帶 openExternalBrowser=1
   const ua = await ev('navigator.userAgent');

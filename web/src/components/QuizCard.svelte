@@ -62,15 +62,19 @@
   function tickFrame(now){
     const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
     step(dt); render();
-    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else { running = false; flipping = false; rest(); }
+    if (S.mode !== 'idle') requestAnimationFrame(tickFrame); else { running = false; flipping = false; rest(); reveal(); }
   }
 
   // 背對畫面的那面暫停常駐動畫：看不到，卻照樣每幀重算與合成
   function rest(){ dormantFront = !shownFront; dormantBack = shownFront; }
 
+  // 正面的對錯配色與「看答案」鈕等落定才換：在越過目標那一幀換會讓整面重排重繪，正好打在回彈上（land 幀 24 → 18 ms，4× 節流）
+  let pendingReveal = false;
+  function reveal(){ if (pendingReveal){ pendingReveal = false; revealed = true; } }
+
   function flipTo(target, onLand){
     S.onLand = onLand || null;
-    if (reduced){ S.theta = target; render(); land(); return; }
+    if (reduced){ S.theta = target; render(); land(); reveal(); return; }
     S.mode = 'spring'; S.target = target; S.landed = false; S.prevDiff = S.theta - target;
     flipping = true; dormantFront = dormantBack = false;
     if (!running){ running = true; last = performance.now(); requestAnimationFrame(tickFrame); }
@@ -87,15 +91,16 @@
     if (answered || busy) return;
     chosen = val; answered = true;
     onresult(isCorrect(val, question.answer));
+    pendingReveal = true;
     flipTo(S.theta + 180, () => {
-      revealed = true;
       const seal = back.querySelector('.seal');
       if (seal && !reduced) seal.animate([{ transform: 'rotate(-8deg) scale(1.9)', opacity: 0 }, { transform: 'rotate(-8deg) scale(1)', opacity: 1 }],
         { duration: 280, easing: 'cubic-bezier(.3,1.5,.5,1)' });
     });
   }
 
-  const peek = () => { if (!busy) flipTo(Math.round(S.theta / 180) * 180 - 180); };
+  // 回彈中就按「看題目」：正面要轉回來了，先換好
+  const peek = () => { if (!busy){ reveal(); flipTo(Math.round(S.theta / 180) * 180 - 180); } };
   const show = () => { if (!busy) flipTo(Math.round(S.theta / 180) * 180 + 180); };
 
   async function next(){
@@ -107,7 +112,7 @@
     await onnext();
     await tick();
     if (!slot) return;  // 最後一題：外層已換成完成畫面，這張卡已卸載
-    answered = false; chosen = null; revealed = false; guessed = false;
+    answered = false; chosen = null; revealed = false; guessed = false; pendingReveal = false;
     Object.assign(S, { theta: 0, vel: 0, target: 0, mode: 'idle', landed: true, onLand: null });
     await tick();
     render(); rest();
