@@ -186,6 +186,14 @@ def diff_versions(old: dict, new: dict) -> list[str]:
     return sorted(lines)
 
 
+def date_only_note(old: dict, new: dict, changes: list[str]) -> str | None:
+    """官方下載檔的「資料產生日期」就是下載當天，每次重抓都會變；題目沒動時只會讓 JSON 差兩行、歷史多一個 7 MiB 的來源檔，
+    這種換版不值得 commit，印一句講明。有任何題目變動就不印（那時日期變是正常的）。"""
+    if changes or old.get("generated") == new.get("generated"):
+        return None
+    return f"題庫內容相同，只有產生日期 {old.get('generated')}→{new.get('generated')}；不必 commit，git checkout -- data/ 換回去即可"
+
+
 def main(argv: list[str]) -> int:
     check_only = "--check" in argv
     sys.stdout.reconfigure(encoding="utf-8")
@@ -218,6 +226,9 @@ def main(argv: list[str]) -> int:
                 by_kind.setdefault(c.split(" ", 1)[0], []).append(c)
             summary = "、".join(f"{k} {len(v)}" for k, v in by_kind.items())
             print(f"  與上一版相比：{len(changes)} 處變動" + (f"（{summary}）" if changes else ""))
+            note = date_only_note(json.loads(current), data, changes)
+            if note:
+                print(f"  {note}")
             for k, v in by_kind.items():  # 每類最多列 30 筆，整批換解析時不會刷掉幾千行
                 for c in v[:30]:
                     print(f"    {c}")

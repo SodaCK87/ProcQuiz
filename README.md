@@ -8,7 +8,7 @@
 ## 狀態
 
 M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.github.io/ProcQuiz/ 。手機實機確認過翻卡不頓（2026-10-02）、星空不再重排（2026-10-03）；還沒在實機確認長解析能不能捲到底、連續練會不會發熱、系統字級放大、LINE 內建瀏覽器轉址（清單在 [目標路線圖.md](目標路線圖.md)〈現在卡在哪〉）。進度見路線圖。
-測試：`python -m unittest discover -s tests` 45 條全綠（2026-10-04，本機 Python 3.11.9，約 40 秒；相依先裝 `pip install -r requirements.txt`）；
+測試：`python -m unittest discover -s tests` 47 條全綠（2026-10-04，本機 Python 3.11.9，約 40 秒；相依先裝 `pip install -r requirements.txt`）；
 網站邏輯 `npm test`（在 `web/`）36 條全綠（Node 24）。這兩個條數由 `tests/test_readme.py` 與實際載入的條數比對，加了測試沒改這裡會紅。交付前跑 `python tools/run_gate.py`，依序跑這兩套測試、網站建置與建置產出檢查（頁尾有程式版本、commit 與回報連結；package.json、最近的 tag、版本紀錄同版），CI 跑的是同一支。
 支援範圍：維護用 Node 24、Python 3.11（與 CI 同版，`web/package.json` 的 `engines` 擋舊版 Node）；網站建置目標 Chrome／Edge 111、Firefox 114、Safari／iOS 16.4 以上（`web/vite.config.js` 的 `build.target`，更舊的瀏覽器開站可能空白），`tests/test_readme.py` 比對這段與設定檔一致。
 
@@ -57,7 +57,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 第一次先在 repo 根目錄 `pip install -r requirements.txt`（版本釘死，換版先跑測試）。
 
 1. `python tools/fetch_official.py`：從政府電子採購網「採購法規題庫」下載全部題庫的 DOC 與 PDF，兩份都成功才覆蓋 `data/source/official.*`。
-2. `python tools/convert.py`：核對後寫出 `data/questions/*.json`，並列出與上一版相比新增、刪除、改答案、改解析、改註記的題目。任何一項核對不過就中止且不寫檔；`data/review/notes.json` 不在也中止。
+2. `python tools/convert.py`：核對後寫出 `data/questions/*.json`，並列出與上一版相比新增、刪除、改答案、改解析、改註記的題目。任何一項核對不過就中止且不寫檔；`data/review/notes.json` 不在也中止。官方檔的「資料產生日期」是下載當天，題目沒變時它會印「題庫內容相同，只有產生日期…不必 commit」，照它說的 `git checkout -- data/` 換回去（來源檔 7 MiB，只為日期進歷史不值得）。
 3. 第三方解析出新版時，覆蓋 `data/source/true-false.xlsx`、`multiple-choice.xlsx` 再跑第 2 步。
 4. `python tools/build_fonts.py`：依新題庫重切網站用的思源宋體子集（要先在 `web/` 跑過 `npm ci`）。介面文字改了也要重跑；`tests/test_fonts.py` 會抓到缺字。題庫裡的 CJK 相容表意字（契、參、履 等 Big5 來源留下的碼位）思源宋體沒有字形，切字型時在 cmap 借 NFC 對應標準字的字形，題文不改。
 5. 跑一次測試、看過 `git diff data/questions/` 後 commit。

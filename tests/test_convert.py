@@ -242,6 +242,22 @@ class OfficialCrossCheck(unittest.TestCase):
             official.cross_check(self.rtf, pdf)
 
 
+class DateOnlyNote(unittest.TestCase):
+    """重抓官方檔只差「資料產生日期」時要講明不必 commit；題目有變就不能印這句，否則會把真變動說成只是日期"""
+
+    def test_same_content_new_date_is_called_out(self):
+        old, new = {"generated": "115/10/02"}, {"generated": "115/10/04"}
+        note = convert.date_only_note(old, new, [])
+        self.assertIsNotNone(note)
+        self.assertIn("115/10/02→115/10/04", note)
+        self.assertIn("不必 commit", note)
+
+    def test_silent_when_questions_changed_or_date_same(self):
+        old, new = {"generated": "115/10/02"}, {"generated": "115/10/04"}
+        self.assertIsNone(convert.date_only_note(old, new, ["改答案 tf-01-0001 O→X"]))
+        self.assertIsNone(convert.date_only_note(old, dict(old), []))
+
+
 class SourceCache(unittest.TestCase):
     """守上面的 PDF、RTF 與 xlsx 快取：同一路徑的檔內容一改就要重新解析。鍵若只看路徑，改了檔還會拿到舊結果，
     破壞型測試就會假綠。三條都先用原內容讀一次填快取、再覆蓋同一路徑讀第二次——寫到新路徑的版本路徑鍵也會過，分不出鍵是什麼。"""
