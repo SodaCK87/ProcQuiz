@@ -23,6 +23,8 @@
 //              題型／出題分段鈕的焦點環要畫在 .seg（overflow:hidden）裡面，否則退出 1
 //   interact   互動層（全面盤點 A-05）：複製 dist 刪掉是非題題庫 chunk 再開頁按開始要出「題庫下載失敗」、原 dist 不出且出卡；作答後同一個 task 裡
 //              派 pagehide 要已寫進 localStorage；重點字微調要等題庫到手才下載；UA 含 Line/ 時要轉到 ?openExternalBrowser=1，任一不符退出 1
+//   seams      紋理接縫（PQZ-11）：開站烘好的五張 --tex-* 紋理逐張取像素，比「最後一欄接回第一欄」與「內部相鄰兩欄」的平均差（列方向同理），
+//              接縫比＝前者÷後者第 99 百分位，無縫在 1 以下；任一張任一方向超過 --max-ratio（預設 1.5）就退出 1
 //
 // 網址可寫 serve:<資料夾>（例如 serve:web/dist；第 10 輪起）：腳本自己在 127.0.0.1 隨機埠開一個靜態伺服器，文字資源以 gzip 送、
 // Cache-Control 比照 GitHub Pages 的 max-age=600，量完跟著關掉；不必另外起伺服器，也不碰 .claude/launch.json 的開發伺服器。
@@ -41,8 +43,8 @@ import { gzipSync } from 'node:zlib';
 const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome');
 const [mode, urlArg] = process.argv.slice(2);
 const opt = (name, def) => { const i = process.argv.indexOf('--' + name); return i < 0 ? def : (process.argv[i + 1] ?? true); };
-if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage|focus|interact> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
-const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage', 'focus', 'interact'];
+if (!mode || !urlArg){ console.error('用法：node tools/measure_browser.mjs <flip-idle|start|home-idle|visual|fonts|trace|load|next|contrast|errors|storage|focus|interact|seams> <網址[,網址2]|serve:資料夾> [選項]'); process.exit(2); }
+const MODES = ['flip-idle', 'start', 'home-idle', 'visual', 'fonts', 'trace', 'load', 'next', 'contrast', 'errors', 'storage', 'focus', 'interact', 'seams'];
 if (!MODES.includes(mode)){ console.error(`不認得的模式：${mode}；可用 ${MODES.join('、')}`); process.exit(2); }
 const urls = urlArg.split(','), CPU = Number(opt('cpu', 1)), TRIALS = Number(opt('trials', 6));
 const VARIANTS = JSON.parse(opt('variants', '{"現況":""}'));
@@ -454,4 +456,24 @@ if (mode === 'interact'){
     && out.微調晚於題庫 !== null && out.微調晚於題庫 >= 0 && out.pagehide後紀錄 === 1 && /openExternalBrowser=1/.test(out.LINE轉址);
   try { rmSync(broken, { recursive: true, force: true }); } catch {}
   finish({ 通過: ok, ...out }, ok ? 0 : 1);
+}
+
+if (mode === 'seams'){
+  // 紋理接縫（PQZ-11）：feTurbulence 不加 stitchTiles 時雜訊不週期，平鋪起來每格邊緣斷開，看起來像截斷的圖片拼接
+  await open(urls[0], 2500);
+  const MAX = Number(opt('max-ratio', 1.5));
+  const out = await ev(`(async () => { const st = document.documentElement.style, res = {};
+    for (const name of [...st].filter(k => k.startsWith('--tex-'))){
+      const v = st.getPropertyValue(name), url = v.slice(v.indexOf('(') + 1, v.lastIndexOf(')')).replaceAll('"', ''), img = new Image(); img.src = url; await img.decode();
+      const W = img.naturalWidth, H = img.naturalHeight, c = new OffscreenCanvas(W, H), g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, W, H).data, px = (x, y) => { const i = 4 * (y * W + x); return d[i] + d[i + 1] + d[i + 2] + d[i + 3]; };
+      // 每一對相鄰欄（列）的平均差，含「最後一欄接回第一欄」那對；接縫比＝接回那對÷內部各對的第 99 百分位。
+      // 不比平均：汙漬大片透明、內部平均差很小，平均會把正常的起伏放大成假紅
+      const pairs = (n, m, at) => { const a = []; for (let k = 0; k < n; k++){ const k2 = (k + 1) % n; let s = 0; for (let j = 0; j < m; j++) s += Math.abs(at(k2, j) - at(k, j)); a.push(s / m); } return a; };
+      const ratio = a => { const wrap = a[a.length - 1], inner = a.slice(0, -1).sort((p, q) => p - q), p99 = inner[Math.floor(inner.length * .99)]; return +(wrap / (p99 || 1)).toFixed(2); };
+      res[name.slice(6)] = { 尺寸: W + '×' + H, 點陣: url.startsWith('blob:'), 左右接縫比: ratio(pairs(W, H, (x, y) => px(x, y))), 上下接縫比: ratio(pairs(H, W, (y, x) => px(x, y))) };
+    } return res; })()`);
+  const names = Object.keys(out), bad = names.filter(k => out[k].左右接縫比 > MAX || out[k].上下接縫比 > MAX);
+  const ok = names.length === 5 && bad.length === 0;
+  finish({ 通過: ok, 門檻: MAX, 超標: bad, ...out }, ok ? 0 : 1);
 }

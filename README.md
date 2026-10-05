@@ -24,6 +24,7 @@ M1 轉檔可用；M2 卡片練習網站第一版已上線：https://sodack87.git
 6. 紀錄存不進去的提示：練習紀錄寫不進 localStorage 時（無痕模式、儲存空間滿、被封鎖），作答後畫面上方提示一句「這次的作答不會被記住」，下一次存成功就收掉；判斷在 `web/src/lib/progress.js` 的 `saveWithNotice`、`npm test` 守，`node tools/measure_browser.mjs storage serve:web/dist` 在建置後的網站把 `setItem` 換成擲例外後作答，確認提示真的出現、正常作答時沒有。
 7. 鍵盤焦點：看不見的那一面卡片設 `inert`，Tab 不會停在它的按鈕上（否則按 Enter 等於跳題）；題型與出題分段鈕的焦點環畫在鈕內側，不被圓角容器裁掉。`node tools/measure_browser.mjs focus serve:web/dist` 在選題頁、卡面正面、翻到背面各按 Tab 8 次核對。
 8. 互動層：判對錯與出下一題抽成 `web/src/lib/deck.js` 的純函式進 `npm test`；`node tools/measure_browser.mjs interact serve:web/dist` 把題庫 chunk 刪掉再開頁要出「題庫下載失敗」、作答後立刻離開頁面紀錄要已寫入、重點字微調要等題庫到手才下載、LINE 內建瀏覽器要轉到外部瀏覽器。
+9. 紋理接縫：頁面與卡面的五張紙紋由 SVG `feTurbulence` 畫好後平鋪，要加 `stitchTiles='stitch'` 且濾鏡區域剛好等於圖，否則每格邊緣斷開、看起來像截斷的圖片拼接（PQZ-11）；`node tools/measure_browser.mjs seams serve:web/dist` 逐張比「最後一欄接回第一欄」與內部相鄰兩欄的差。
 
 首頁的課程清單與題數在建置時從題庫 JSON 抽出（`virtual:bank-index`），首頁不必等題庫下載；完整題庫在背景下載，按「開始」時還沒到才會顯示「題庫下載中…」。
 
